@@ -18,6 +18,7 @@ struct VDL_LoaderDescription {
   char *libraries_path;
   char *library_file_name;
   char *library_compile_flags;
+  char **library_compile_command;
 };
 
 struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
@@ -27,6 +28,8 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
 
 void VDL_LibraryPrint(struct VDL_Library *library);
 
+
+// #define VDL_IMPLEMENTATION
 #ifdef VDL_IMPLEMENTATION
 
 #include <dirent.h>
@@ -92,9 +95,7 @@ void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
       }
       puts("OK:    directory changed");
       puts("");
-      char *args[] = {"make", NULL};
-
-      execvp(args[0], args);
+      execvp(description.library_compile_command[0], description.library_compile_command);
 
       printf("execvp error");
     } else {
