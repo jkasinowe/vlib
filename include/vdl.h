@@ -28,8 +28,10 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
 
 void VDL_LibraryPrint(struct VDL_Library *library);
 
+void VDL_LibraryUnload(struct VDL_Library library);
 
-// #define VDL_IMPLEMENTATION
+
+//#define VDL_IMPLEMENTATION
 #ifdef VDL_IMPLEMENTATION
 
 #include <dirent.h>
@@ -155,11 +157,23 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
   return libraries;
 }
 
-void VDL_LibraryPrint(struct VDL_Library *library) {
-  printf("Library %s\n", library->name);
+void VDL_LibraryUnload(struct VDL_Library *library) {
+  dlclose(library->handle);
+  free(library->name);
+  library->name = NULL;
   for (size_t i = 0; i < library->reference_count; i++) {
-    printf("%p <- %s\n", library->references[i].pointer,
-           library->references[i].name);
+    library->references[i].pointer = NULL;
+    free(library->references[i].name);
+  }
+  free(library->references);
+  library->reference_count = 0;
+};  
+
+void VDL_LibraryPrint(struct VDL_Library library) {
+  printf("Library %s\n", library.name);
+  for (size_t i = 0; i < library.reference_count; i++) {
+    printf("%p <- %s\n", library.references[i].pointer,
+           library.references[i].name);
   }
   puts("");
 }
