@@ -7,6 +7,7 @@ extern "C" {
 
 #include <stdint.h>
 #include <stdlib.h>
+#include "vlog.h"
 
 // define VMESH_DEBUG to show debug info
 
@@ -31,7 +32,6 @@ void VMESH_MeshDefaultDestroy(struct VMESH_Mesh *mesh);
 void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out);
 
 #ifdef VMESH_IMPLEMENTATION
-#include <assert.h>
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -42,16 +42,10 @@ void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out);
 #define KEY_SIZE = (INDEX_SIZE * INDEX_SIZE * INDEX_SIZE)
 #define LOOKUP_TABLE_SIZE (KEY_SIZE * INDEX_SIZE);
 
-#ifdef VMESH_DEBUG
-#define iVMESH_Debug(...) (printf(##__VA_ARGS__))
-#else
-#define iVMESH_Debug(...)
-#endif
-
 void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out) {
   FILE *file = fopen(path, "r");
   if (!file) {
-    fprintf(stderr, "ERROR: VMESH: no such file %s\n", path);
+    VLOG_Error("no such file %s", path);
     abort();
   }
   while (fgetc(file) != EOF)
@@ -157,14 +151,14 @@ enum iVMESH_InputType iVMESH_ParseInputType(char *source, uint32_t source_size,
     (*index)++;
     return IVMESH_INPUT_TYPE_COMMENT;
   }
-  fprintf(stderr, "ERROR: VMESH: parsing at %zu\n", *index);
+  VLOG_Error("Couldn't parse input type at %zu", *index);
   abort();
 }
 
 void iVMESH_CountVNTF(char *source, size_t source_size, uint32_t *vert_count,
                       uint32_t *face_count, uint32_t *uv_count,
                       uint32_t *normal_count) {
-  iVMESH_Debug("getting vertex and index count.. \n");
+  VLOG_Wait("Calculating vertex and index count");
   char c;
   size_t char_index = 0;
   uint32_t lface_count = 0;
@@ -204,6 +198,7 @@ void iVMESH_CountVNTF(char *source, size_t source_size, uint32_t *vert_count,
   *normal_count = lnormal_count;
   *uv_count = luv_count;
   *vert_count = lvert_count;
+  VLOG_Ok("Vertex and index count calculated");
 }
 
 Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
@@ -211,8 +206,8 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
                               uint32_t vcount, float **normals, uint32_t ncount,
                               float **uvs, uint32_t tcount) {
   size_t char_index = 0;
-  Index *indices = calloc(face_count * 3, sizeof(Index));
-  iVMESH_Debug("Gettting vertices.. \n");
+  Index *indices = (Index*)calloc(face_count * 3, sizeof(Index));
+  VLOG_Wait("Gettting vertices");
   fflush(stdout);
 
   *positions = calloc(vcount * 3, sizeof(float));
@@ -237,7 +232,6 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
       iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
       break;
     case IVMESH_INPUT_TYPE_VERTEX: {
-      iVMESH_Debug("position #%d at %zu\n", cur_pos, char_index);
       for (size_t float_count = 0; float_count < 3; float_count++) {
         iVMESH_ParseSpace(source, source_size, &char_index);
         (*positions)[cur_pos * 3 + float_count] =
@@ -248,7 +242,6 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
       break;
     }
     case IVMESH_INPUT_TYPE_NORMAL: {
-      iVMESH_Debug("normal #%d at %zu\n", cur_normal, char_index);
       for (size_t float_count = 0; float_count < 3; float_count++) {
         iVMESH_ParseSpace(source, source_size, &char_index);
         (*normals)[cur_normal * 3 + float_count] =
@@ -259,7 +252,6 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
       break;
     }
     case IVMESH_INPUT_TYPE_TEXTURE: {
-      iVMESH_Debug("uv #%d at %zu\n", cur_uv, char_index);
       for (size_t float_count = 0; float_count < 2; float_count++) {
         iVMESH_ParseSpace(source, source_size, &char_index);
         (*uvs)[cur_uv * 2 + float_count] =
@@ -270,7 +262,6 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
       break;
     }
     case IVMESH_INPUT_TYPE_FACE: {
-      iVMESH_Debug("face #%d at %zu\n", cur_index / 3, char_index);
       for (size_t index_count = 0; index_count < 3; index_count++) {
         indices[cur_index].pos =
             iVMESH_ParseInt(source, source_size, &char_index);
@@ -287,9 +278,7 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
           }
 
           if (source[char_index] != '/') {
-            fprintf(stderr,
-                    "ERROR: VMESH: missing second '/' in f/f/f at %zu\n",
-                    char_index);
+            VLOG_Error("missing second '/' in f/f/f at %zu\n", char_index);
             abort();
           }
 
@@ -331,7 +320,8 @@ uint32_t iVMESH_TableFind(Index *table, Index *index, uint32_t face_count) {
       return i;
     }
   }
-  assert("How the hell");
+  VLOG_Error("Found invalid table entry");
+  abort();
   return 0;
 }
 
@@ -371,14 +361,13 @@ void VMESH_MeshLoadObj(struct VMESH_Mesh *mesh, char *source,
 
   struct VMESH_Vertex *vertices =
       calloc(face_count * 3, sizeof(struct VMESH_Vertex));
-  iVMESH_Debug("Recalculating Vertices..");
+  VLOG_Wait("Recalculating vertices");
   fflush(stdout);
   for (size_t i = 0; i < face_count * 3; i++) {
     uint32_t j = mesh_indices[i];
     uint32_t p = lookup_table[j].pos - 1;
     uint32_t n = lookup_table[j].normal - 1;
     uint32_t t = lookup_table[j].tex - 1;
-    //	printf("%d maps to %d with position %d\n", i, j, p);
 
     vertices[j].pos[0] = positions[3 * p + 0];
     vertices[j].pos[1] = positions[3 * p + 1];
@@ -392,14 +381,14 @@ void VMESH_MeshLoadObj(struct VMESH_Mesh *mesh, char *source,
       vertices[j].tex[1] = uvs[2 * t + 1];
     }
   }
-  iVMESH_Debug(" Done\n");
+  VLOG_Ok("Vertices recalculated");
 
   mesh->vertices = vertices;
   mesh->indices = mesh_indices;
   mesh->vertex_count = out_vertex_count;
   mesh->index_count = face_count * 3;
 
-  iVMESH_Debug("Tidying Up.. ");
+  VLOG_Wait("Tidying up");
   fflush(stdout);
   free(mapped_indices);
   free(lookup_table);
@@ -411,7 +400,7 @@ void VMESH_MeshLoadObj(struct VMESH_Mesh *mesh, char *source,
   if (uv_count) {
     free(uvs);
   }
-  iVMESH_Debug("Done\n");
+  VLOG_Ok("Tidied up");
 }
 
 void iVMESH_CountVerticesAndFaces(char *path, uint32_t *vertices,

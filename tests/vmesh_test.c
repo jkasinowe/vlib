@@ -1,6 +1,7 @@
+#define VLOG_LOG
 #define VMESH_IMPLEMENTATION
-#include "../include/vmesh.h"
 #include <stdio.h>
+#include "../include/vmesh.h"
 
 int main() {
   struct VMESH_Mesh mesh;
