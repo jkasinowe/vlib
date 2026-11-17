@@ -446,7 +446,6 @@ void iVMESH_CountVerticesAndFaces(char *path, uint32_t *vertices,
 void VMESH_MeshDefaultDestroy(struct VMESH_Mesh *mesh) {
   free(mesh->indices);
   free(mesh->vertices);
-  free(mesh);
 }
 
 #endif

@@ -38,6 +38,7 @@ int main() {
     
     free(voxels);
     VMESH_MeshDefaultDestroy(mesh);
-    
+    free(source);
+    free(mesh);
     return 0;
 }
