@@ -119,7 +119,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
                                       size_t reference_count,
                                       size_t *library_count) {
 
-  VLOG_Wait("Getting library names\n");
+  VLOG_Wait("Getting library names");
   char **names = iVDL_LibrariesNamesGet(description, library_count);
   iVDL_LibrariesCompile(description, names, *library_count);
 
@@ -139,10 +139,10 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
 
     libraries[i].references = (struct VDL_Reference *)calloc(
         sizeof(struct VDL_Reference), reference_count);    
-    VLOG_Wait("Loading library '%s' at %s\n", libraries[i].name, final_path);
+    VLOG_Wait("Loading library '%s' at %s", libraries[i].name, final_path);
     libraries[i].handle = dlopen(final_path, RTLD_LAZY | RTLD_LOCAL);
     if (!libraries[i].handle) {
-      printf("MOD %s IS NOT LOADED\n", libraries[i].name);
+      printf("MOD %s IS NOT LOADED", libraries[i].name);
       abort();
     }
     dlerror();
@@ -158,7 +158,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
     free(names[i]);
   }
   free(names);
-  VLOG_Info("%zu mods loaded\n", *library_count);
+  VLOG_Info("%zu mods loaded", *library_count);
   return libraries;
 }
 
@@ -175,9 +175,9 @@ void VDL_LibraryUnload(struct VDL_Library library) {
 }
 
 void VDL_LibraryPrint(struct VDL_Library *library) {
-  VLOG_Info("Library %s\n", library->name);
+  VLOG_Info("Library %s", library->name);
   for (size_t i = 0; i < library->reference_count; i++) {
-    VLOG_Info("%p <- %s\n", library->references[i].pointer,
+    VLOG_Info("%p <- %s", library->references[i].pointer,
            library->references[i].name);
   }
 }
