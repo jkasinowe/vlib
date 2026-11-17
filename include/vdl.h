@@ -1,6 +1,7 @@
 #ifndef VDL_H
 #define VDL_H
 #include <stdlib.h>
+#include "vlog.h"
 
 struct VDL_Reference {
   char *name;
@@ -33,7 +34,7 @@ void VDL_LibraryUnload(struct VDL_Library library);
 
 #define VDL_IMPLEMENTATION
 #ifdef VDL_IMPLEMENTATION
-#include "vlog.h"
+
 #include <dirent.h>
 #include <dlfcn.h>
 #include <stdio.h>
