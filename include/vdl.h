@@ -87,6 +87,7 @@ char **iVDL_LibrariesNamesGet(struct VDL_LoaderDescription description,
 
 void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
                            char **library_names, size_t library_count) {
+  VLOG_Wait("Compiling libraries\n");
   for (size_t i = 0; i < library_count; i++) {
     char full_path[256] = {0};
     strncat(full_path, description.libraries_path, 255);
@@ -112,6 +113,7 @@ void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
       }
     }
   }
+  VLOG_Ok("\nLibraries compiled");
 }
 
 struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
