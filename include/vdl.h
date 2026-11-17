@@ -153,6 +153,9 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
     }
   }
 
+  for (size_t i = 0; i < *library_count; i++) {
+    free(names[i]);
+  }
   free(names);
   printf("%zu mods loaded\n", *library_count);
   return libraries;
