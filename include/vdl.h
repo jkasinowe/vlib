@@ -15,9 +15,9 @@ struct VDL_Library {
 };
 
 struct VDL_LoaderDescription {
-  char *mods_path;
-  char *mods_library_file_name;
-  char *mods_compile_flags;
+  char *libraries_path;
+  char *library_file_name;
+  char *library_compile_flags;
 };
 
 struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
@@ -38,10 +38,10 @@ void VDL_LibraryPrint(struct VDL_Library *library);
 #include <unistd.h>
 
 size_t iVDL_LibrariesCount(struct VDL_LoaderDescription description) {
-  DIR *mods_dir = opendir(description.mods_path);
+  DIR *libraries_dir = opendir(description.libraries_path);
   size_t library_count = 0;
   struct dirent *entry = NULL;
-  while ((entry = readdir(mods_dir)) != 0) {
+  while ((entry = readdir(libraries_dir)) != 0) {
     if (entry->d_type == DT_DIR) {
       if (!strcmp(entry->d_name, ".."))
         continue;
@@ -50,29 +50,29 @@ size_t iVDL_LibrariesCount(struct VDL_LoaderDescription description) {
       library_count++;
     }
   }
-  closedir(mods_dir);
+  closedir(libraries_dir);
   return library_count;
 }
 
 char **iVDL_LibrariesNamesGet(struct VDL_LoaderDescription description,
                               size_t *library_count) {
   *library_count = iVDL_LibrariesCount(description);
-  char **names = calloc(sizeof(char *), *library_count);
-  DIR *mods_dir = opendir(description.mods_path);
+  char **names = (char**)calloc(sizeof(char *), *library_count);
+  DIR *libraries_dir = opendir(description.libraries_path);
 
   struct dirent *entry = NULL;
-  size_t mod_index = 0;
-  while ((entry = readdir(mods_dir)) != 0) {
+  size_t library_index = 0;
+  while ((entry = readdir(libraries_dir)) != 0) {
     if (entry->d_type == DT_DIR) {
       if (!strcmp(entry->d_name, ".."))
         continue;
       if (!strcmp(entry->d_name, "."))
         continue;
-      names[mod_index] = strdup(entry->d_name);
-      mod_index++;
+      names[library_index] = strdup(entry->d_name);
+      library_index++;
     }
   }
-  closedir(mods_dir);
+  closedir(libraries_dir);
   return names;
 }
 
@@ -80,7 +80,7 @@ void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
                            char **library_names, size_t library_count) {
   for (size_t i = 0; i < library_count; i++) {
     char full_path[256] = {0};
-    strncat(full_path, description.mods_path, 255);
+    strncat(full_path, description.libraries_path, 255);
     strncat(full_path, "/", 255);
     strncat(full_path, library_names[i], 255);
     pid_t pid = fork();
@@ -119,22 +119,22 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
   char **names = iVDL_LibrariesNamesGet(description, library_count);
   iVDL_LibrariesCompile(description, names, *library_count);
 
-  struct VDL_Library *libraries =
+  struct VDL_Library *libraries = (struct VDL_Library*)
       calloc(sizeof(struct VDL_Library), *library_count);
 
   for (size_t i = 0; i < *library_count; i++) {
     char final_path[256] = {0};
-    strncat(final_path, description.mods_path, 255);
+    strncat(final_path, description.libraries_path, 255);
     strncat(final_path, "/", 255);
     strncat(final_path, names[i], 255);
     strncat(final_path, "/", 255);
-    strncat(final_path, description.mods_library_file_name, 255);
+    strncat(final_path, description.library_file_name, 255);
 
     libraries[i].name = strdup(names[i]);
     libraries[i].reference_count = reference_count;
 
-    libraries[i].references =
-        calloc(sizeof(struct VDL_Reference), reference_count);
+    libraries[i].references = (struct VDL_Reference *)calloc(
+        sizeof(struct VDL_Reference), reference_count);    
     printf("Loading library '%s' at %s\n", libraries[i].name, final_path);
     libraries[i].handle = dlopen(final_path, RTLD_LAZY | RTLD_LOCAL);
     if (!libraries[i].handle) {
