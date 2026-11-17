@@ -113,7 +113,7 @@ void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
       }
     }
   }
-  VLOG_Ok("\nLibraries compiled");
+  VLOG_Ok("Libraries compiled");
 }
 
 struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
