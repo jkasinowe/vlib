@@ -33,7 +33,7 @@ void VDL_LibraryUnload(struct VDL_Library library);
 
 #define VDL_IMPLEMENTATION
 #ifdef VDL_IMPLEMENTATION
-
+#include "vlog.h"
 #include <dirent.h>
 #include <dlfcn.h>
 #include <stdio.h>
@@ -62,6 +62,8 @@ size_t iVDL_LibrariesCount(struct VDL_LoaderDescription description) {
 char **iVDL_LibrariesNamesGet(struct VDL_LoaderDescription description,
                               size_t *library_count) {
   *library_count = iVDL_LibrariesCount(description);
+  VLOG_Wait("Loading %zu libraries", *library_count);
+  
   char **names = (char**)calloc(sizeof(char *), *library_count);
   DIR *libraries_dir = opendir(description.libraries_path);
 
@@ -78,6 +80,7 @@ char **iVDL_LibrariesNamesGet(struct VDL_LoaderDescription description,
     }
   }
   closedir(libraries_dir);
+  VLOG_Ok("Libraries loaded");
   return names;
 }
 
