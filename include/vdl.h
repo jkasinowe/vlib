@@ -94,27 +94,24 @@ void iVDL_LibrariesCompile(struct VDL_LoaderDescription description,
     strncat(full_path, library_names[i], 255);
     pid_t pid = fork();
     if (pid == 0) { // child process
-      puts("");
-      printf("WAIT:  changing directory to %s\n", full_path);
+      VLOG_Wait("changing directory to %s", full_path);
       if (chdir(full_path)) {
-        printf("ERROR: no such directory %s\n", full_path);
+        VLOG_Error("no such directory %s", full_path);
       }
-      puts("OK:    directory changed");
-      puts("");
+      VLOG_Ok("directory changed");
       execvp(description.library_compile_command[0], description.library_compile_command);
 
-      printf("execvp error");
+      VLOG_Error("execvp error");
     } else {
       int status = 0;
       waitpid(pid, &status, 0);
       if (status) {
-        printf("compilation of %s failed\n", library_names[i]);
+        VLOG_Error("compilation of %s failed", library_names[i]);
       } else {
-        printf("Library %s compiled successfully\n", library_names[i]);
+        VLOG_Ok("Library %s compiled successfully", library_names[i]);
       }
     }
   }
-  puts("");
 }
 
 struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
@@ -122,7 +119,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
                                       size_t reference_count,
                                       size_t *library_count) {
 
-  printf("Getting library names\n");
+  VLOG_Wait("Getting library names\n");
   char **names = iVDL_LibrariesNamesGet(description, library_count);
   iVDL_LibrariesCompile(description, names, *library_count);
 
@@ -142,7 +139,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
 
     libraries[i].references = (struct VDL_Reference *)calloc(
         sizeof(struct VDL_Reference), reference_count);    
-    printf("Loading library '%s' at %s\n", libraries[i].name, final_path);
+    VLOG_Wait("Loading library '%s' at %s\n", libraries[i].name, final_path);
     libraries[i].handle = dlopen(final_path, RTLD_LAZY | RTLD_LOCAL);
     if (!libraries[i].handle) {
       printf("MOD %s IS NOT LOADED\n", libraries[i].name);
@@ -161,7 +158,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
     free(names[i]);
   }
   free(names);
-  printf("%zu mods loaded\n", *library_count);
+  VLOG_Info("%zu mods loaded\n", *library_count);
   return libraries;
 }
 
@@ -178,12 +175,11 @@ void VDL_LibraryUnload(struct VDL_Library library) {
 }
 
 void VDL_LibraryPrint(struct VDL_Library *library) {
-  printf("Library %s\n", library->name);
+  VLOG_Info("Library %s\n", library->name);
   for (size_t i = 0; i < library->reference_count; i++) {
-    printf("%p <- %s\n", library->references[i].pointer,
+    VLOG_Info("%p <- %s\n", library->references[i].pointer,
            library->references[i].name);
   }
-  puts("");
 }
 
 #endif

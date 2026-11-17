@@ -9,7 +9,7 @@ extern FILE *VLOG_Output;
 #define VLOG_INFO "INFO:  "
 #define iVLOG_Log(level, ...)                                                  \
   do {                                                                         \
-    fprintf(VLOG_Output, "%s:%s:%d:\t", level, __FILE__, __LINE__);          \
+    fprintf(VLOG_Output, "%s%s:%d:\t", level, __FILE__, __LINE__);          \
     fprintf(VLOG_Output, ##__VA_ARGS__);                                       \
     fprintf(VLOG_Output, "\n");                                                \
   } while (0);
