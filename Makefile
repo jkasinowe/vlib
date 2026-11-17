@@ -1,4 +1,4 @@
-DEBUG = -O0 -ggdb
+DEBUG = -O0 -ggdb -fsanitize=address
 RELEASE = -O3
 
 EFLAGS = -Wall -Wextra -Werror
@@ -16,4 +16,11 @@ test_vmath: tests/vmath_test.c test_build
 
 test_vmesh: tests/vmesh_test.c test_build
 	cc tests/vmesh_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vmesh_test
+
+
+test_vvox: tests/vvox_test.c test_build
+	cc tests/vvox_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vvox_test
+
+test_vshape: tests/vshape_test.c test_build
+	cc tests/vshape_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vshape_test
 

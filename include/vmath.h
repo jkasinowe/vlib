@@ -188,7 +188,7 @@ void VM44_V3Multiply(f32 mat[16], f32 v[3]);
 
 
 //#endif
-#ifdef _VMATH_IMPLEMENTATION_
+#ifdef VMATH_IMPLEMENTATION
 
 // the infamous quake quick inverse square root function (Comments preserved)
 f32 VM_InverseSqrt(f32 number) {
