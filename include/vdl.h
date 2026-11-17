@@ -27,7 +27,7 @@ struct VDL_Library *VDL_LibrariesLoad(struct VDL_LoaderDescription description,
                                       size_t reference_count,
                                       size_t *library_count);
 
-void VDL_LibraryPrint(struct VDL_Library *library);
+void VDL_LibraryPrint(FILE* file, struct VDL_Library *library);
 
 void VDL_LibraryUnload(struct VDL_Library library);
 
@@ -176,10 +176,10 @@ void VDL_LibraryUnload(struct VDL_Library library) {
   library.reference_count = 0;
 }
 
-void VDL_LibraryPrint(struct VDL_Library *library) {
-  VLOG_Info("Library %s", library->name);
+void VDL_LibraryPrint(FILE* file, struct VDL_Library *library) {
+  fprintf(file, "Library %s:\n", library->name);
   for (size_t i = 0; i < library->reference_count; i++) {
-    VLOG_Info("%p <- %s", library->references[i].pointer,
+    fprintf(file, "\t%p <- %s\n", library->references[i].pointer,
            library->references[i].name);
   }
 }
