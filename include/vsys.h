@@ -183,7 +183,7 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 
 #endif
-//#define VSYS_IMPLEMENTATION
+#define VSYS_IMPLEMENTATION
 #ifdef VSYS_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
@@ -216,19 +216,22 @@ void iVSYS_AllocatorInitialize() {
 }
 
 struct VSYS_Window *VSYS_WindowCreate(f32 size[2], usize creation_flags) {
+
   struct VSYS_Window *window = (struct VSYS_Window *)VMEM_Allocate(
       sizeof(struct VSYS_Window), VsysAllocator);
 
   SDL_WindowFlags window_flags = 0;
-  if (creation_flags & VSYS_WINDOW_CREATION_FLAG_VULKAN) {    
+  if (creation_flags & VSYS_WINDOW_CREATION_FLAG_VULKAN) {
     window_flags |= SDL_WINDOW_VULKAN;
+    VLOG_Info("VULKAN was picked as a renderer");
   }
   if (creation_flags & VSYS_WINDOW_CREATION_FLAG_OPENGL) {
     window_flags |= SDL_WINDOW_OPENGL;
+    VLOG_Info("OPENGL was picked as a renderer");    
   }
-  
-  window->sdlWindow =
-      SDL_CreateWindow("VSYS Program", floorf(size[0]), floorf(size[1]), window_flags);
+
+  window->sdlWindow = SDL_CreateWindow("VSYS Program", floorf(size[0]),
+                                       floorf(size[1]), window_flags);  
 
   window->keyboard.state =
       (b8 *)VMEM_Allocate(sizeof(b8) * VSYS_KEY_MAX, VsysAllocator);  
@@ -341,20 +344,18 @@ b8 VSYS_WindowFrameTimeWaitedGet(struct VSYS_Window *window) {
 }
 
 
-const char* const* VSYS_VulkanInstanceDefaultExtensionsGet(u32 *count) {  
+const char* const* VSYS_VulkanInstanceDefaultExtensionsGet(u32 *count) {
   return SDL_Vulkan_GetInstanceExtensions(count);
 }
-
-
 
 void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
                                        void *vulkan_instance,
                                        struct VMEM_Allocator *vmem_allocator,
                                        void *vulkan_allocation_callbacks) {
   if (vmem_allocator == NULL) {
-    //    vmem_allocator = VsysAllocator;
+    vmem_allocator = VsysAllocator;
   }
-  
+
   VkSurfaceKHR *surface =
       (VkSurfaceKHR *)VMEM_Allocate(sizeof(VkSurfaceKHR), vmem_allocator);
 
