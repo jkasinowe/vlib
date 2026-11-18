@@ -123,13 +123,13 @@ struct VSYS_Window;
 #define VSYS_WINDOW_FLAG_FULLSCREEN (1 << 0)
 #define VSYS_WINDOW_FLAG_RESIZABLE (1 << 1)
 
-void VSYS_MousePositionGet(struct VSYS_Window* window, f32 mouse_position[2]);
+void VSYS_WindowMousePositionGet(struct VSYS_Window* window, f32 mouse_position[2]);
 
-void VSYS_MouseDeltaGet(struct VSYS_Window* window, f32 mouse_delta[2]);
+void VSYS_WindowMouseDeltaGet(struct VSYS_Window* window, f32 mouse_delta[2]);
 
-b8 VSYS_KeyDownGet(struct VSYS_Window* window, usize key);
+b8 VSYS_WindowKeyDownGet(struct VSYS_Window* window, usize key);
 
-b8 VSYS_KeyUpGet(struct VSYS_Window* window, usize key);
+b8 VSYS_WindowKeyUpGet(struct VSYS_Window* window, usize key);
 
 #define VSYS_WINDOW_CREATION_FLAG_VULKAN (1 << 0)
 #define VSYS_WINDOW_CREATION_FLAG_OPENGL (1 << 1)
@@ -197,12 +197,19 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 struct VSYS_Keyboard {
   b8 *state;
-};  
+};
+
+struct VSYS_Mouse {
+  f32 position[2];
+  f32 delta[2];
+};
+
 
 struct VSYS_Window {
   SDL_Window *sdlWindow;
   VSYS_WindowResizeCallback_t *windowResizeCallback;
   struct VSYS_Keyboard keyboard;
+  struct VSYS_Mouse mouse;
   usize flags;
   u64 frameTimeTarget;
   u64 frameLast;
@@ -215,7 +222,6 @@ void iVSYS_AllocatorInitialize() {
   if (VsysAllocator == NULL) {
     VsysAllocator = VMEM_AllocatorCreate(0);
   }
-
 }
 
 struct VSYS_Window *VSYS_WindowCreate(f32 size[2], usize creation_flags) {
@@ -274,6 +280,13 @@ void VSYS_InputUpdate(struct VSYS_Window *window) {
     case SDL_EVENT_WINDOW_LEAVE_FULLSCREEN:
       VSYS_WindowFlagsDisable(window, VSYS_WINDOW_FLAG_FULLSCREEN);
       break;
+    case SDL_EVENT_MOUSE_MOTION:
+      window->mouse.delta[0] = event.motion.xrel;
+      window->mouse.delta[1] = event.motion.yrel;
+
+      window->mouse.position[0] = event.motion.x;
+      window->mouse.position[1] = event.motion.y;
+      break;
     }
   }
   VLOG_Ok("Input polled");
@@ -323,11 +336,11 @@ void VSYS_WindowFlagsDisable(struct VSYS_Window *window, usize window_flags) {
 usize VSYS_WindowFlagsGet(struct VSYS_Window *window) { return window->flags; }
 
 
-b8 VSYS_KeyDownGet(struct VSYS_Window *window, usize key) {
+b8 VSYS_WindowKeyDownGet(struct VSYS_Window *window, usize key) {
   return window->keyboard.state[key];
 }
 
-b8 VSYS_KeyUpGet(struct VSYS_Window *window, usize key) {
+b8 VSYS_WindowKeyUpGet(struct VSYS_Window *window, usize key) {
   return !window->keyboard.state[key];
 }
 
@@ -400,7 +413,18 @@ void VSYS_WindowSizeGet(struct VSYS_Window *window, f32 size[2]) {
 
 const char *VSYS_ErrorGet() {
   return SDL_GetError();
+}
+
+
+void VSYS_WindowMousePositionGet(struct VSYS_Window *window,
+                                 f32 mouse_position[2]) {
+  VM2_Copy(mouse_position, window->mouse.position);
+}
+
+void VSYS_WindowMouseDeltaGet(struct VSYS_Window *window, f32 mouse_delta[2]) {
+  VM2_Copy(mouse_delta, window->mouse.delta);
 }  
+
 
 #endif
 
