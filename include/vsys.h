@@ -357,16 +357,18 @@ void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
   VkSurfaceKHR *surface =
       (VkSurfaceKHR *)VMEM_Allocate(sizeof(VkSurfaceKHR), vmem_allocator);
 
+  VLOG_Wait("Creating a vulkan surface");
+  
   b8 result = SDL_Vulkan_CreateSurface(
       (SDL_Window *)window->sdlWindow, (VkInstance)vulkan_instance,
       (struct VkAllocationCallbacks *)vulkan_allocation_callbacks,
       (VkSurfaceKHR *)surface);
 
-  if (result) {
+  if (!result) {
     VLOG_Error("SDL: %s", SDL_GetError());
     abort();
   }    
-
+  VLOG_Ok("Vulkan surface created");
   
   return surface;
 }
