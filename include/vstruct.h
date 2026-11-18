@@ -80,5 +80,4 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
 }  
 #endif
 
-
 #endif
