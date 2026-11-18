@@ -253,6 +253,7 @@ void VSYS_WindowTitleSet(struct VSYS_Window *window, const char *name) {
 }
 
 void VSYS_InputUpdate(struct VSYS_Window *window) {
+  VM2_Set(window->mouse.delta, 0, 0);
   VLOG_Wait("Polling input");
   SDL_Event event;
   while (SDL_PollEvent(&event)) {
