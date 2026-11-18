@@ -4,7 +4,7 @@
 #include "../include/vmath.h"
 
 void test_vectors() {
-    printf("Testing Vectors.. ");
+    printf("Testing Vectors..");
     f32 first[] =  { 1.0f, 6.0f  };
     f32 second[] = { 2.0f, 4.0f  };
     f32 expected[] = { 3.0f, 10.0f };
@@ -36,11 +36,11 @@ void test_vectors() {
     VM3_CrossO(cross_a, cross_b, cross_r);
     assert(VM3_Eq(cross_r, cross_e));
     
-    printf("OK\n");
+    printf("\tOK\n");
 }
 
 void test_vectors_packed() {
-    printf("Testing Packed Vectors.. ");
+    printf("Testing Packed Vecs..");
     f32 unpacked[6] =  {  1.0f, 6.0f,   3.0f, 4.0f,   5.0f, 6.0f  };
     f32 packed[3][2] = { {1.0f, 6.0f}, {3.0f, 4.0f}, {5.0f, 6.0f} };
     f32 result_p[3][2];
@@ -51,7 +51,7 @@ void test_vectors_packed() {
 
     VM2_Unpack(packed, 3, result_up);
     assert(VMV_Eq(result_up, unpacked, 6));
-    printf("OK\n");
+    printf("\tOK\n");
 }
 
 void test_matricies() {
@@ -100,7 +100,7 @@ void test_matricies() {
 
     assert(VMV_Eq(out, expected_inverse, 16));
     
-    printf("OK\n");    
+    printf("\tOK\n");    
 }
 
 

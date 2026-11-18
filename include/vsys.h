@@ -352,8 +352,9 @@ void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
                                        struct VMEM_Allocator *vmem_allocator,
                                        void *vulkan_allocation_callbacks) {
   if (vmem_allocator == NULL) {
-    vmem_allocator = VsysAllocator;
+    //    vmem_allocator = VsysAllocator;
   }
+  
   VkSurfaceKHR *surface =
       (VkSurfaceKHR *)VMEM_Allocate(sizeof(VkSurfaceKHR), vmem_allocator);
 

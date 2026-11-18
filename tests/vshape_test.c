@@ -15,10 +15,10 @@ int main() {
     assert(VSHAPE_Collide(first, second));
     second.center[0] += 10;
     assert(!VSHAPE_Collide(first, second));
-    printf("OK\n");
+    printf("\tOK\n");
 
 
-    printf("Box to Box: ");
+    printf("Box with a Box: ");
     fflush(stdout);
     VShape boxO = VSHAPE_BoxCreate((f32[3]){0, 0, 0}, (f32[3]){1, 1, 1}, (f32[3]){0, 0, 0});
     VShape boxB = VSHAPE_BoxCreate((f32[3]){0.5, 0.5, 0.5}, (f32[3]){1, 1, 1}, (f32[3]){0, 0, 0});
@@ -32,9 +32,9 @@ int main() {
     VShape box5 = VSHAPE_BoxCreate((f32[3]){1.18, 0.0, 0.0}, (f32[3]){1, 1, 1}, (f32[3]){0, V_PI*(angle/180), 0});
     assert(!VSHAPE_Collide(boxO, box4));
     assert( VSHAPE_Collide(boxO, box5));
-    printf("OK\n");
+    printf("\tOK\n");
 
-    printf("AABB to AABB: ");
+    printf("AABB box to AABB box: ");
     fflush(stdout);
     VShape aabb1 = VSHAPE_AABBCreate((f32[3]){0.1, 0.1, 0.1}, (f32[3]){2, 2, 2});
     VShape aabb2 = VSHAPE_AABBCreate((f32[3]){1.9, 1.9, 1.9}, (f32[3]){2, 2, 2});
@@ -52,7 +52,7 @@ int main() {
     VShape aabb6 = VSHAPE_AABBCreate((f32[3]){2, 2, 2}, (f32[3]){2, 2, 2});
     assert(!VSHAPE_Collide(aabb5, aabb6));
 
-    printf("OK\n");
+    printf("\tOK\n");
 
 
     printf("Frustrum to Box: ");
@@ -63,5 +63,5 @@ int main() {
     assert(!VSHAPE_Collide(frustrum, object_out));
     assert(VSHAPE_Collide(frustrum, object_in));
     
-    printf("OK\n");
+    printf("\tOK\n");
 }

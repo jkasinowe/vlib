@@ -1,9 +1,11 @@
-#define VLOG_LOG
 #define VMESH_IMPLEMENTATION
 #include <stdio.h>
 #include "../include/vmesh.h"
+#include <assert.h>
 
 int main() {
+  printf("Testing obj loader..");
+  fflush(stdout);
   struct VMESH_Mesh mesh;
   char* path = "./models/box.obj";
   char *source = NULL;
@@ -12,16 +14,11 @@ int main() {
   VMESH_FileLoad(path, &source, &source_size);
   VMESH_MeshLoadObj(&mesh, source, source_size);
   struct VMESH_Vertex *vertices = mesh.vertices;
-  uint32_t *index = mesh.indices;
-  size_t show_count = mesh.index_count > 100 ? 100 : mesh.index_count;
-  for (size_t i = 0; i < show_count; i++) {
-    size_t j = index[i];
-    printf("%zu->%zu:\t%.3f %.3f %.3f\t: %.3f %.3f\t: %.3f %.3f %.3f\n", i, j,
-           vertices[j].pos[0], vertices[j].pos[1], vertices[j].pos[2],
-           vertices[j].tex[0], vertices[j].tex[1],           
-           vertices[j].normal[0], vertices[j].normal[1], vertices[j].normal[2]);    
-  }
-  printf("OK\n");
+  uint32_t *indices = mesh.indices;
+
+  
+  assert(vertices[indices[10]].pos[0] + 1 < 0.00001);
+  printf("\tOK\n");
   VMESH_MeshDefaultDestroy(&mesh);
   free(source);
   return 0;

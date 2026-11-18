@@ -4,7 +4,7 @@
 
 
 int main() {
-  printf("Array list: ");
+  printf("Testing array lists: ");
     
   u64 *ints = NULL;
 
@@ -14,7 +14,7 @@ int main() {
   }
 
   VST_ListFree(ints);
-  printf("OK\n");
+  printf("\tOK\n");
   
   return 0;
 }  

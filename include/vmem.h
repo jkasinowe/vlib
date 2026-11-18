@@ -107,7 +107,7 @@ void *iVMEM_AllocatorAllocate(struct VMEM_Allocator *allocator, usize size) {
   padding = (char*)element_start_address_with_padding - (char*)element_start_address_no_padding;  
   
   block_last->pointer += padding+size;
-  VLOG_Ok("Allocation address with %zu padding = %p", padding, element_start_address_with_padding);
+  VLOG_Ok("Allocation address with 0x%x padding = %p", (u32)padding, element_start_address_with_padding);
   return element_start_address_with_padding;
 }
 
@@ -130,9 +130,12 @@ void *VMEM_Reallocate(void *buffer, usize size) {
 void VMEM_AllocatorDebug(FILE* file, struct VMEM_Allocator *allocator) {
   fprintf(file, "Allocator at %p:\n", allocator);
   for (usize i = 0; i < allocator->block_count; i++) {
+    void *block_start = allocator->blocks[i].data;
+    usize pointer = allocator->blocks[i].pointer;
+    void *block_end = (char*)block_start +pointer;
     fprintf(file, "block:\n");
-    fprintf(file, "\taddress\t->%p\n", &allocator->blocks[i]);
-    fprintf(file, "\tpointer\t->%zu\n", allocator->blocks[i].pointer);
+    fprintf(file, "\taddress\t->%p\n", block_start);
+    fprintf(file, "\tpointer\t->%p\t%zu\n", block_end, pointer);
   }    
 }
 
