@@ -374,7 +374,7 @@ void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
   }    
   VLOG_Ok("Vulkan surface created");
   
-  return surface;
+  return *surface;
 }
 
 void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
@@ -384,6 +384,8 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
       (VkInstance)vulkan_instance, (VkSurfaceKHR)vulkan_surface,
       (struct VkAllocationCallbacks *)vulkan_allocation_callbacks);
 }
+
+
 
 void VSYS_WindowSizeGet(struct VSYS_Window *window, f32 size[2]) {
   i32 window_width = 0;
