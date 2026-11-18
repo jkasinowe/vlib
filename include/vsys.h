@@ -183,7 +183,7 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 
 #endif
-//#define VSYS_IMPLEMENTATION
+#define VSYS_IMPLEMENTATION
 #ifdef VSYS_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
@@ -356,8 +356,11 @@ void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
     vmem_allocator = VsysAllocator;
   }
 
-  VkSurfaceKHR *surface = NULL;
+  VkSurfaceKHR *surface =
+      (VkSurfaceKHR *)VMEM_Allocate(sizeof(VkSurfaceKHR), vmem_allocator);
 
+  *surface = NULL;
+  
   VLOG_Wait("Creating a vulkan surface");
   
   b8 result = SDL_Vulkan_CreateSurface(
