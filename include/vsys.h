@@ -183,7 +183,7 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 
 #endif
-
+#define VSYS_IMPLEMENTATION
 #ifdef VSYS_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
@@ -212,7 +212,7 @@ void iVSYS_AllocatorInitialize() {
   if (VsysAllocator == NULL) {
     VsysAllocator = VMEM_AllocatorCreate(0);
   }
-  SDL_Init(SDL_INIT_VIDEO);
+
 }
 
 struct VSYS_Window *VSYS_WindowCreate(f32 size[2], usize creation_flags) {
@@ -220,7 +220,7 @@ struct VSYS_Window *VSYS_WindowCreate(f32 size[2], usize creation_flags) {
       sizeof(struct VSYS_Window), VsysAllocator);
 
   SDL_WindowFlags window_flags = 0;
-  if (creation_flags & VSYS_WINDOW_CREATION_FLAG_VULKAN) {
+  if (creation_flags & VSYS_WINDOW_CREATION_FLAG_VULKAN) {    
     window_flags |= SDL_WINDOW_VULKAN;
   }
   if (creation_flags & VSYS_WINDOW_CREATION_FLAG_OPENGL) {
@@ -282,7 +282,11 @@ b8 VSYS_WindowShouldCloseGet(struct VSYS_Window *window) {
   return VsysWindowShouldClose;
 }
 
-void VSYS_Initialize() { iVSYS_AllocatorInitialize(); }
+void VSYS_Initialize() {
+  iVSYS_AllocatorInitialize();
+  SDL_Init(SDL_INIT_VIDEO);
+}
+
 
 void VSYS_WindowDestroy(struct VSYS_Window *window) {
   SDL_DestroyWindow(window->sdlWindow);
@@ -353,11 +357,17 @@ void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
   VkSurfaceKHR *surface =
       (VkSurfaceKHR *)VMEM_Allocate(sizeof(VkSurfaceKHR), vmem_allocator);
 
-  SDL_Vulkan_CreateSurface(
+  b8 result = SDL_Vulkan_CreateSurface(
       (SDL_Window *)window->sdlWindow, (VkInstance)vulkan_instance,
       (struct VkAllocationCallbacks *)vulkan_allocation_callbacks,
       (VkSurfaceKHR *)surface);
 
+  if (result) {
+    VLOG_Error("SDL: %s", SDL_GetError());
+    abort();
+  }    
+
+  
   return surface;
 }
 
