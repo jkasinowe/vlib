@@ -153,6 +153,8 @@ typedef void VSYS_WindowResizeCallback_t(struct VSYS_Window *window,
 void VSYS_WindowResizeCallbackSet(struct VSYS_Window *window,
                                   VSYS_WindowResizeCallback_t *callback);
 
+void VSYS_WindowSizeGet(struct VSYS_Window *window, f32 size[2]);
+
 void VSYS_Initialize();
 
 void VSYS_WindowDestroy(struct VSYS_Window *window);
@@ -321,7 +323,7 @@ b8 VSYS_KeyUpGet(struct VSYS_Window *window, usize key) {
 void VSYS_WindowFrameTimeTargetSet(struct VSYS_Window *window,
                                    double frame_time) {
   window->frameTimeTarget = ((u64)(frame_time * 1000*1000)) * 1000;
-  printf("Target frame time %lf\n", window->frameTimeTarget/1000000000.0);
+  VLOG_Info("Target frame time %lf\n", window->frameTimeTarget/1000000000.0);
 }
 
 b8 VSYS_WindowFrameTimeWaitedGet(struct VSYS_Window *window) {
@@ -362,5 +364,13 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
       (VkInstance)vulkan_instance, (VkSurfaceKHR)vulkan_surface,
       (struct VkAllocationCallbacks *)vulkan_allocation_callbacks);
 }
+
+void VSYS_WindowSizeGet(struct VSYS_Window *window, f32 size[2]) {
+  i32 window_width = 0;
+  i32 window_height = 0;
+  SDL_GetWindowSize(window->sdlWindow, &window_width, &window_height);
+  size[0] = window_width;
+  size[1] = window_height;
+}  
 
 #endif

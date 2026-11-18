@@ -30,11 +30,15 @@ int main() {
       break;
     }
     if (VSYS_KeyUpGet(window, VSYS_KEY_SPACE)) {
-      printf("%zu:\tUnspaced\n", frame);
+      printf("%zu:\tUnspaced\t", frame);
     } else {
-      printf("%zu:\tSpaced\n", frame);
-    }      
+      printf("%zu:\tSpaced\t", frame);
+    }
+    f32 window_size[2];
+    VSYS_WindowSizeGet(window, window_size);
+    printf("%3.1f:%3.1f\n", window_size[0], window_size[1]);
     frame++;
+    
   }
 
   VSYS_WindowDestroy(window);
