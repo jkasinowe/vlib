@@ -264,6 +264,7 @@ void VSYS_InputUpdate(struct VSYS_Window *window) {
       break;
     case SDL_EVENT_KEY_DOWN:
       window->keyboard.state[event.key.scancode] = true;
+      VLOG_Info("Key down %d", event.key.scancode);
       break;
     case SDL_EVENT_KEY_UP:
       window->keyboard.state[event.key.scancode] = false;

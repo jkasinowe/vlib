@@ -127,10 +127,10 @@ int main() {
       ;    
     
     VSYS_InputUpdate(window);
-    if (VSYS_KeyDownGet(window, VSYS_KEY_ESCAPE)) {
+    if (VSYS_WindowKeyDownGet(window, VSYS_KEY_ESCAPE)) {
       break;
     }
-    if (VSYS_KeyUpGet(window, VSYS_KEY_SPACE)) {
+    if (VSYS_WindowKeyUpGet(window, VSYS_KEY_SPACE)) {
       printf("%zu:\tUnspaced\t", frame);
     } else {
       printf("%zu:\tSpaced\t", frame);
