@@ -21,7 +21,7 @@ void *VMEM_Reallocate(void* buffer, usize size);
 void VMEM_AllocatorDebug(FILE* file, struct VMEM_Allocator *allocator);
 
 #endif // VMEM_H
-#define VMEM_IMPLEMENTATION
+//#define VMEM_IMPLEMENTATION
 #ifdef VMEM_IMPLEMENTATION
 #include "vlog.h"
 
