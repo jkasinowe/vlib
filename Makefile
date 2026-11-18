@@ -1,7 +1,7 @@
 DEBUG = -O0 -ggdb -fsanitize=address
 RELEASE = -O3
 
-EFLAGS = -Wall -Wextra -Werror
+EFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-variable
 
 MODE = $(DEBUG)
 
@@ -27,8 +27,15 @@ test_vshape: tests/vshape_test.c test_build
 test_vstruct: tests/vstruct_test.c test_build
 	cc tests/vstruct_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vstruct_test
 
+test_vmem: tests/vmem_test.c test_build
+	cc tests/vmem_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vmem_test
 
-tests: test_vmath test_vmesh test_vvox test_vshape test_vstruct
+test_vsys: tests/vsys_test.c test_build
+	cc tests/vsys_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vsys_test -lSDL3
+
+
+tests: test_vmem test_vmath test_vmesh test_vvox test_vshape test_vstruct
+	$(TEST_BUILD)vmem_test
 	$(TEST_BUILD)vmath_test
 	$(TEST_BUILD)vmesh_test
 	$(TEST_BUILD)vvox_test
