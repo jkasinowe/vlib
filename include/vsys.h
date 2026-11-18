@@ -335,9 +335,12 @@ b8 VSYS_WindowFrameTimeWaitedGet(struct VSYS_Window *window) {
   return true;
 }
 
-const char *const *VSYS_VulkanGetInstanceDefaultExtensions(u32 *count) {
+
+const char* const* VSYS_VulkanInstanceDefaultExtensionsGet(u32 *count) {  
   return SDL_Vulkan_GetInstanceExtensions(count);
 }
+
+
 
 void *VSYS_VulkanInstanceSurfaceCreate(struct VSYS_Window *window,
                                        void *vulkan_instance,
