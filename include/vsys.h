@@ -2,6 +2,7 @@
 #define VSYS_H
 #include "vmath.h"
 #include "vmem.h"
+#include "vlog.h"
 
 #define VSYS_KEY_A 4
 #define VSYS_KEY_B 5
