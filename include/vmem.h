@@ -21,7 +21,7 @@ void *VMEM_Reallocate(void* buffer, usize size);
 void VMEM_AllocatorDebug(FILE* file, struct VMEM_Allocator *allocator);
 
 #endif // VMEM_H
-//#define VMEM_IMPLEMENTATION
+#define VMEM_IMPLEMENTATION
 #ifdef VMEM_IMPLEMENTATION
 #include "vlog.h"
 
@@ -36,6 +36,8 @@ struct VMEM_Allocator {
   usize block_size;
   usize block_count;
 };
+
+#define iVMEM_ALIGNMENT 16ULL
 
 struct VMEM_AllocatorBlock *
 iVMEM_AllocatorBlockLastGet(struct VMEM_Allocator *allocator) {
@@ -71,24 +73,42 @@ struct VMEM_Allocator *VMEM_AllocatorCreateEx(usize block_size, usize flags) {
   return allocator;
 }
 
+void *iVMEM_AlignAddress(void *ptr) {
+  return (char*)((u64)((char*)ptr + (iVMEM_ALIGNMENT - 1)) & ~(iVMEM_ALIGNMENT - 1));
+};  
 
 void *iVMEM_AllocatorAllocate(struct VMEM_Allocator *allocator, usize size) {
   struct VMEM_AllocatorBlock *block_last =
       iVMEM_AllocatorBlockLastGet(allocator);
 
-  if (block_last->pointer + size >= allocator->block_size) {
-    VLOG_Info("%zu+%zu=%zu, bigger than block size", block_last->pointer, size,
-              block_last->pointer + size);
-    
+  char *block_last_bytes = (char *)block_last->data;
+
+  void* element_start_address_no_padding = &block_last_bytes[block_last->pointer];
+  
+  void* element_start_address_with_padding = iVMEM_AlignAddress(element_start_address_no_padding);
+
+  u64 padding = (char*)element_start_address_with_padding - (char*)element_start_address_no_padding;
+
+
+  if (block_last->pointer + padding + size >= allocator->block_size) {    
+    VLOG_Info("%zu+%zu+%zu=%zu, bigger than block size", block_last->pointer,
+              size, padding, block_last->pointer + size + padding);    
     iVMEM_AllocatorBlockCreate(allocator);
     block_last = iVMEM_AllocatorBlockLastGet(allocator);
   }
 
   VLOG_Wait("Getting new allocation address");
-  void* element_start_address = &((char*)block_last->data)[block_last->pointer];
-  block_last->pointer += size;
-  VLOG_Ok("Allocation address = %p", element_start_address);
-  return element_start_address;
+
+  element_start_address_no_padding = &(block_last_bytes)[block_last->pointer];
+  element_start_address_with_padding = iVMEM_AlignAddress(element_start_address_no_padding);
+
+  VLOG_Info("%p", element_start_address_with_padding);
+  VLOG_Info("%p", element_start_address_no_padding);
+  padding = (char*)element_start_address_with_padding - (char*)element_start_address_no_padding;  
+  
+  block_last->pointer += padding+size;
+  VLOG_Ok("Allocation address with %zu padding = %p", padding, element_start_address_with_padding);
+  return element_start_address_with_padding;
 }
 
 void *VMEM_Allocate(usize size, struct VMEM_Allocator *allocator) {
