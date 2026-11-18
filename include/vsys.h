@@ -148,6 +148,9 @@ void VSYS_InputUpdate(struct VSYS_Window *window);
 
 b8 VSYS_WindowShouldCloseGet(struct VSYS_Window *window);
 
+const char* VSYS_ErrorGet();
+
+
 typedef void VSYS_WindowResizeCallback_t(struct VSYS_Window *window,
                                          f32 size_new[2]);
 
@@ -183,7 +186,7 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 
 #endif
-#define VSYS_IMPLEMENTATION
+//#define VSYS_IMPLEMENTATION
 #ifdef VSYS_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
@@ -393,6 +396,11 @@ void VSYS_WindowSizeGet(struct VSYS_Window *window, f32 size[2]) {
   SDL_GetWindowSize(window->sdlWindow, &window_width, &window_height);
   size[0] = window_width;
   size[1] = window_height;
+}
+
+const char *VSYS_ErrorGet() {
+  return SDL_GetError();
 }  
 
 #endif
+
