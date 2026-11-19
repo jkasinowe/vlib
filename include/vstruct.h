@@ -400,6 +400,9 @@ void VST_StringTrim(VST_String string) {
 
 struct VST_StringView VST_StringFind(VST_String haystack,
                                      struct VST_StringView needle) {
+  if (needle.size > haystack->size) {
+    return (struct VST_StringView){0};
+  }    
   for (usize i = 0; i < haystack->size - needle.size; i++) {
     struct VST_StringView haystack_view =
         VST_StringViewFromStringRange(haystack, i, needle.size);

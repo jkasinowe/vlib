@@ -21,7 +21,8 @@ int main() {
   printf("Testing strings: ");
 
 
-  VST_String name, path1, path2, path3, full, expected;
+  VST_String name, path1, path2, path3, full, expected, empty;
+  empty = VST_StringCreate();
   expected = VST_StringFromStr("home/user/models/model.obj");
   name = VST_StringFromStr("   model.obj    ");
   VST_StringTrim(name);
@@ -31,10 +32,9 @@ int main() {
   full = VST_StringsConcatPath(path1, path2, path3, name);
 
   assert(VST_StringEqual(full, expected));
-  assert(VST_StringContains(full, VST_StringViewFromStr("models")));
-
-  
-  VST_StringsDestroy(name, path1, path2, path3, full, expected);  
+  assert(!VST_StringContains(empty, VST_StringViewFromStr("models")));
+  assert(VST_StringContains(full, VST_StringViewFromStr("models")));   
+  VST_StringsDestroy(name, path1, path2, path3, full, expected, empty);  
   printf("\tOK\n");
   
   return 0;
