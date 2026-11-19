@@ -20,11 +20,24 @@ void *VMEM_Allocate(usize size, struct VMEM_Allocator *allocator);
 void *VMEM_Reallocate(void* buffer, usize size);
 void VMEM_AllocatorDebug(FILE* file, struct VMEM_Allocator *allocator);
 
+b8 VMEM_Copy(void* to, usize size, void* from, usize amount);
+
+const char* VMEM_ErrorGet();
+
 #endif // VMEM_H
-//#define VMEM_IMPLEMENTATION
+#define VMEM_IMPLEMENTATION
 #ifdef VMEM_IMPLEMENTATION
 #include "vlog.h"
+#include <string.h>
 
+enum iVMEM_Error {
+  IVMEM_ERROR_NO_ERROR,
+  IVMEM_ERROR_DESTINATION_NULL,
+  IVMEM_ERROR_SOURCE_NULL,
+  IVMEM_ERROR_DESTINATION_SMALL,
+};
+
+enum iVMEM_Error iVMEM_ErrorLast = IVMEM_ERROR_NO_ERROR;
 
 struct VMEM_AllocatorBlock {
   void *data;
@@ -146,6 +159,41 @@ void VMEM_AllocatorDestroy(struct VMEM_Allocator *allocator) {
   }
   free(allocator->blocks);
   free(allocator);
+}
+
+b8 VMEM_Copy(void *to, usize size, void *from, usize amount) {
+  if (!to) {
+    iVMEM_ErrorLast = IVMEM_ERROR_DESTINATION_NULL;
+    return 1;
+  }    
+  if (!from) {
+    iVMEM_ErrorLast = IVMEM_ERROR_SOURCE_NULL;
+    return 1;
+  }    
+
+  if (size < amount) {
+    iVMEM_ErrorLast =  IVMEM_ERROR_DESTINATION_SMALL;
+    return 1;
+  }    
+
+  memcpy(to, from, amount);
+  
+  return 0;
+}
+
+
+const char* VMEM_ErrorGet() {
+  switch (iVMEM_ErrorLast) {
+  case IVMEM_ERROR_NO_ERROR:
+    return "";
+  case IVMEM_ERROR_DESTINATION_NULL:
+    return "Destination is NULL";
+  case IVMEM_ERROR_DESTINATION_SMALL:
+    return "Destination is too small";
+  case IVMEM_ERROR_SOURCE_NULL:
+    return "Source is NULL";
+  }
+  return "Unimplemented error";
 }  
 
 #endif

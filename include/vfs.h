@@ -1,11 +1,11 @@
 #ifndef VFS_H
 #define VFS_H
+#include <stdlib.h>
 
 
 struct VFS_Node;
 
-
-
+size_t VFS_FileSizeGet();
 
 #endif
 #ifdef VFS_IMPLEMENTATION
