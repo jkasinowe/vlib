@@ -36,8 +36,11 @@ typedef struct iVST_String *VST_String;
 
 void VST_StringEnsureEndsIn(VST_String string, char end);
 void VST_StringFolderAppendCstr(VST_String string, char *folder_name);
+
 void VST_StringTrimEnd(VST_String string);
 void VST_StringTrimBegin(VST_String string);
+void VST_StringTrim(VST_String string);
+
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...);
 void VST_StringAppendStr(VST_String string, char *str);
@@ -114,6 +117,7 @@ void *iVST_ListGrow_func(void* list, size_t element_size, size_t add_cap, size_t
 
 #define VSTRUCT_IMPLEMENTATION
 #ifdef VSTRUCT_IMPLEMENTATION
+#include <ctype.h>
 #include <string.h>
 #include <stdbool.h>
 #include "vmath.h"
@@ -362,7 +366,7 @@ void VST_StringEnsureEndsIn(VST_String string, char end) {
 }
 
 bool VST_StringIsEmpty(VST_String string) {
-  return string->size > 0 ? true : false;  
+  return string->size > 0 ? false : true;  
 }
 
 void iVST_StringsAppendPath(VST_String to, ...) {
@@ -373,6 +377,38 @@ void iVST_StringsAppendPath(VST_String to, ...) {
 
 VST_String VST_StringDuplicate(VST_String string) {
   return VST_StringFromStr(VST_StringPtrGet(string));
+}
+
+void VST_StringPrint(VST_String string) {
+  puts(VST_StringPtrGet(string));
+}
+
+void VST_StringTrimEnd(VST_String string) {
+  while (true) {
+    if (VST_StringIsEmpty(string))
+      return;
+    char *strptr = VST_StringPtrGet(string);
+    if (!isspace(strptr[string->size - 1]))
+      return;
+    string->size--;
+    VST_StringPtrGet(string)[string->size] = '\0';
+  }
+}
+
+void VST_StringTrimBegin(VST_String string) {
+  while (true) {
+    if (VST_StringIsEmpty(string))
+      return;
+    if (!isspace(VST_StringPtrGet(string)[0]))
+      return;
+    string->start++;
+    string->size--;
+  }
+}
+
+void VST_StringTrim(VST_String string) {
+  VST_StringTrimBegin(string);
+  VST_StringTrimEnd(string);
 }  
 
 #endif
