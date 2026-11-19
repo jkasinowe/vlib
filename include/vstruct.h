@@ -1,72 +1,76 @@
 #ifndef VSTRUCT_H
 #define VSTRUCT_H
-#include <stdlib.h>
-#include <stdint.h>
 #include <stdarg.h>
 #include <stdbool.h>
-
-/*
-
-
-// all char* strings are utf8
- */
-
-
-typedef struct iVST_String *VST_String;
+#include <stdint.h>
+#include <stdlib.h>
 
 /* Can be printed by specifying "%.*s" format in printf */
 struct VST_StringView {
-  char *ptr;
+  char *ptr; // points to the already offset position
   size_t size;
-};  
+  size_t offset; // offset from the start of the buffer it was created for
+};
 
+struct iVST_String; // 'opaque' structure, should not be accessed directly
+typedef struct iVST_String *VST_String;
 
-void VST_StringEnsureEndsIn(VST_String string, char end);
-void VST_StringFolderAppendCstr(VST_String string, char *folder_name);
+VST_String VST_StringCreate();
+VST_String VST_StringFromStr(char *str);
+VST_String VST_StringDuplicate(VST_String string);
+
+#define VST_StringsInit(first, ...)                                            \
+  iVST_StringsInit(first, ##__VA_ARGS__, (VST_String *)-1)
+
+#define VST_StringsDestroy(first, ...)                                         \
+  iVST_StringsDestroy(first, ##__VA_ARGS__, (VST_String *)-1)
+
+void VST_StringEnsureEndsIn(
+    VST_String string,
+    char symbol); // if there is no *symbol* at the end, put it there
+
+/* ..Append and ..Concat is the same, but ..Append appends to the first argument
+ * while ..Concat returns the concatenation of arguments
+ */
+
+#define VST_StringsAppend(to, ...)                                             \
+  iVST_StringsAppend(to, ##__VA_ARGS__, (VST_String) - 1)
+
+// append strings, while ensuring there's '/' inbetween
+#define VST_StringsAppendPath(to, ...)                                         \
+  iVST_StringsAppendPath(to, ##__VA_ARGS__, (VST_String) - 1)
+
+#define VST_StringsConcat(first, ...)                                          \
+  iVST_StringsConcat(first, ##__VA_ARGS__, (VST_String) - 1)
+
+// concatenating strings, while ensuring there's '/' inbetween
+#define VST_StringsConcatPath(first, ...)                                      \
+  iVST_StringsConcatPath(first, ##__VA_ARGS__, (VST_String) - 1)
+
+void VST_StringAppendFmt(VST_String string, char *fmt, ...);
+void VST_StringAppendStr(VST_String string, char *str);
 
 void VST_StringTrimEnd(VST_String string);
 void VST_StringTrimBegin(VST_String string);
 void VST_StringTrim(VST_String string);
 
-
-void VST_StringAppendFmt(VST_String string, char *fmt, ...);
-void VST_StringAppendStr(VST_String string, char *str);
-
 int VST_StringCompare(VST_String a, VST_String b);
 bool VST_StringEqual(VST_String a, VST_String b);
-char* VST_StringPtrGet(VST_String string);
+char *VST_StringPtrGet(VST_String string);
 
 bool VST_StringIsEmpty(VST_String string);
-VST_String VST_StringCreate();
-VST_String VST_StringDuplicate(VST_String string);
-VST_String VST_StringFromStr(char *str);
 
 void iVST_StringsInit(VST_String *first, ...);
 void iVST_StringsDestroy(VST_String first, ...);
-
-#define VST_StringsInit(first, ...)                                          \
-  iVST_StringsInit(first, ##__VA_ARGS__, (VST_String *)-1)
-#define VST_StringsDestroy(first, ...)                                         \
-  iVST_StringsDestroy(first, ##__VA_ARGS__, (VST_String *)-1)
-
 void iVST_StringsAppend(VST_String to, ...);
 void iVST_StringsAppendPath(VST_String to, ...);
 VST_String iVST_StringsConcat(VST_String first, ...);
 VST_String iVST_StringsConcatPath(VST_String first, ...);
 
-#define VST_StringsAppend(to, ...)                                          \
-  iVST_StringsAppend(to, ##__VA_ARGS__, (VST_String) - 1)
-#define VST_StringsAppendPath(to, ...)                                      \
-  iVST_StringsAppendPath(to, ##__VA_ARGS__, (VST_String) - 1)
-
-
-#define VST_StringsConcat(first, ...)                                          \
-  iVST_StringsConcat(first, ##__VA_ARGS__, (VST_String) - 1)
-#define VST_StringsConcatPath(first, ...)                                      \
-  iVST_StringsConcatPath(first, ##__VA_ARGS__, (VST_String) - 1)
-
 struct VST_StringView VST_StringFind(VST_String haystack,
                                      struct VST_StringView needle);
+bool VST_StringContains(VST_String haystack, struct VST_StringView needle);
+
 struct VST_StringView VST_StringViewFromStringRange(VST_String string,
                                                     size_t start, size_t end);
 struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
@@ -87,7 +91,8 @@ struct iVST_ListHeader {
   size_t count;
 };
 
-void *iVST_ListGrow_func(void* list, size_t element_size, size_t add_cap, size_t min_cap);
+void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
+                         size_t min_cap);
 
 #define iVST_ListHeaderGet(array) (((struct iVST_ListHeader *)(array)) - 1)
 
@@ -95,7 +100,8 @@ void *iVST_ListGrow_func(void* list, size_t element_size, size_t add_cap, size_t
 #define VST_ListSize VST_ListLength
 #define VST_ListCount VST_ListLength
 
-#define VST_ListCapacity(array) ((array) ? iVST_ListHeaderGet(array)->capacity : 0)
+#define VST_ListCapacity(array)                                                \
+  ((array) ? iVST_ListHeaderGet(array)->capacity : 0)
 
 #define iVST_ListMaybeGrow(array, added_cap)                                   \
   (!(array) || VST_ListLength(array) + (added_cap) >= VST_ListCapacity(array)  \
@@ -112,13 +118,13 @@ void *iVST_ListGrow_func(void* list, size_t element_size, size_t add_cap, size_t
 
 #define VST_ListFree(array) (free(iVST_ListHeaderGet(array)))
 
-#define VSTRUCT_IMPLEMENTATION
+//#define VSTRUCT_IMPLEMENTATION
 #ifdef VSTRUCT_IMPLEMENTATION
-#include <ctype.h>
-#include <string.h>
-#include <stdbool.h>
 #include "vmath.h"
 #include "vmem.h"
+#include <ctype.h>
+#include <stdbool.h>
+#include <string.h>
 
 void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
                          size_t min_cap) {
@@ -135,7 +141,7 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
 
   if (min_cap < 2 * VST_ListCapacity(list)) {
     min_cap = 2 * VST_ListCapacity(list);
-  } else if (min_cap < 4){
+  } else if (min_cap < 4) {
     min_cap = 4;
   }
 
@@ -147,14 +153,12 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
 
   if (list == NULL) {
     iVST_ListHeaderGet(list2)->count = 0;
-
   }
 
   iVST_ListHeaderGet(list2)->capacity = min_cap;
 
   return list2;
 }
-
 
 struct iVST_String {
   usize size;
@@ -163,14 +167,13 @@ struct iVST_String {
   usize capacity;
 };
 
-
 void iVST_StringInit(VST_String *string) {
-  *string = (VST_String) VMEM_Allocate(sizeof(**string), NULL);
-  (*string)->ptr = (char*)VMEM_Allocate(sizeof(char), NULL);
+  *string = (VST_String)VMEM_Allocate(sizeof(**string), NULL);
+  (*string)->ptr = (char *)VMEM_Allocate(sizeof(char), NULL);
   (*string)->size = 0;
   (*string)->start = 0;
   (*string)->ptr[0] = '\0';
-}  
+}
 
 void iVST_StringsInit(VST_String *first, ...) {
   va_list strings;
@@ -181,7 +184,7 @@ void iVST_StringsInit(VST_String *first, ...) {
 
   while (current != (VST_String *)-1) {
     iVST_StringInit(current);
-    current = va_arg(strings, VST_String*);
+    current = va_arg(strings, VST_String *);
   }
 
   va_end(strings);
@@ -193,7 +196,7 @@ void iVST_StringDestroy(VST_String string) {
 
   free(string->ptr);
   free(string);
-}  
+}
 
 void iVST_StringsDestroy(VST_String first, ...) {
   va_list strings;
@@ -222,36 +225,32 @@ void VST_StringAppendStr(VST_String string, char *str) {
   usize str_size = iVST_StrLengthGet(str);
   usize needed_size = string->start;
   needed_size += string->size;
-  needed_size += str_size + 1;  
-  
+  needed_size += str_size + 1;
+
   if (needed_size > string->capacity) {
     string->capacity = needed_size * 2;
-    string->ptr = (char*)VMEM_Reallocate(string->ptr, string->capacity);
+    string->ptr = (char *)VMEM_Reallocate(string->ptr, string->capacity);
   }
-
 
   char *copy_to_start = string->ptr + string->start + string->size;
   usize copy_to_remaining = string->capacity - string->size - string->start;
 
- 
   if (VMEM_Copy(copy_to_start, copy_to_remaining, str, str_size)) {
     VLOG_Error("Unable to copy to string: %s", VMEM_ErrorGet());
   }
-  string->size += str_size;  
-  string->ptr[string->start+string->size] = '\0';
+  string->size += str_size;
+  string->ptr[string->start + string->size] = '\0';
 }
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...) {
   va_list args;
-  
+
   for (usize i = 0; i < strlen(fmt); i++) {
     if (fmt[i] == '%') {
       i++;
-      
-    }      
-  }    
+    }
+  }
 }
-
 
 VST_String VST_StringFromStr(char *str) {
   VST_String string;
@@ -260,21 +259,18 @@ VST_String VST_StringFromStr(char *str) {
   return string;
 }
 
-
 enum iVST_StringsAppendMode { // {"first", "second/", "third"} separator = '/'
   IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, // output: first/second/third
   IVST_STRINGS_APPEND_MODE_JOIN_WITH,      // output: first/second//third
-  IVST_STRINGS_APPEND_MODE_JOIN,           // output: firstsecond/third  
+  IVST_STRINGS_APPEND_MODE_JOIN,           // output: firstsecond/third
 };
 
-
 void iVST_StringsAppendVaList(VST_String to, va_list strings,
-                                           enum iVST_StringsAppendMode mode,
-                                           char symbol) {
+                              enum iVST_StringsAppendMode mode, char symbol) {
   VST_String current = va_arg(strings, VST_String);
 
   VST_String dummy = (VST_String)-1;
-  
+
   while (current != dummy) {
     if (mode == IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN) {
       VST_StringEnsureEndsIn(to, symbol);
@@ -282,14 +278,13 @@ void iVST_StringsAppendVaList(VST_String to, va_list strings,
     if (mode == IVST_STRINGS_APPEND_MODE_JOIN_WITH) {
       char str[2] = {symbol, 0};
       VST_StringAppendStr(to, str);
-    }      
-    VST_StringAppendStr(to, VST_StringPtrGet(current));    
+    }
+    VST_StringAppendStr(to, VST_StringPtrGet(current));
     current = va_arg(strings, VST_String);
   }
 
   va_end(strings);
 }
-
 
 void iVST_StringsAppend(VST_String to, ...) {
   va_list strings;
@@ -297,14 +292,13 @@ void iVST_StringsAppend(VST_String to, ...) {
   iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_JOIN, 0);
 }
 
-
 VST_String iVST_StringsConcat(VST_String first, ...) {
   va_list strings;
   va_start(strings, first);
 
   VST_String result = VST_StringDuplicate(first);
   iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN, 0);
-  
+
   return result;
 }
 
@@ -313,11 +307,11 @@ VST_String iVST_StringsConcatPath(VST_String first, ...) {
   va_start(strings, first);
 
   VST_String result = VST_StringDuplicate(first);
-  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, '/');
-  
+  iVST_StringsAppendVaList(result, strings,
+                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, '/');
+
   return result;
 }
-
 
 int VST_StringCompare(VST_String a, VST_String b) {
   if (a->size != b->size) {
@@ -325,7 +319,7 @@ int VST_StringCompare(VST_String a, VST_String b) {
   }
 
   char *a_ptr = VST_StringPtrGet(a);
-  char *b_ptr = VST_StringPtrGet(b);  
+  char *b_ptr = VST_StringPtrGet(b);
   for (usize i = 0; i < a->size; i++) {
     if (a_ptr[i] != b_ptr[i]) {
       return a_ptr[i] - b_ptr[i];
@@ -336,7 +330,7 @@ int VST_StringCompare(VST_String a, VST_String b) {
 
 bool VST_StringEqual(VST_String a, VST_String b) {
   return !VST_StringCompare(a, b);
-}  
+}
 
 char *VST_StringPtrGet(VST_String string) {
   return string->ptr + string->start;
@@ -356,26 +350,25 @@ void VST_StringEnsureEndsIn(VST_String string, char end) {
   }
 
   char end_str[2] = {end, 0};
-  VST_StringAppendStr(string, end_str);  
+  VST_StringAppendStr(string, end_str);
 }
 
 bool VST_StringIsEmpty(VST_String string) {
-  return string->size > 0 ? false : true;  
+  return string->size > 0 ? false : true;
 }
 
 void iVST_StringsAppendPath(VST_String to, ...) {
   va_list strings;
   va_start(strings, to);
-  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, '/');
+  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN,
+                           '/');
 }
 
 VST_String VST_StringDuplicate(VST_String string) {
   return VST_StringFromStr(VST_StringPtrGet(string));
 }
 
-void VST_StringPrint(VST_String string) {
-  puts(VST_StringPtrGet(string));
-}
+void VST_StringPrint(VST_String string) { puts(VST_StringPtrGet(string)); }
 
 void VST_StringTrimEnd(VST_String string) {
   while (true) {
@@ -405,18 +398,20 @@ void VST_StringTrim(VST_String string) {
   VST_StringTrimEnd(string);
 }
 
-struct VST_StringView VST_StringFind(VST_String haystack, struct VST_StringView needle) {
+struct VST_StringView VST_StringFind(VST_String haystack,
+                                     struct VST_StringView needle) {
   for (usize i = 0; i < haystack->size - needle.size; i++) {
     struct VST_StringView haystack_view =
         VST_StringViewFromStringRange(haystack, i, needle.size);
-    if (VST_StringViewEqual(haystack_view, needle)) return haystack_view;
+    if (VST_StringViewEqual(haystack_view, needle))
+      return haystack_view;
   }
-  
+
   return (struct VST_StringView){0};
 }
 
-struct VST_StringView VST_StringViewFromStringRange(VST_String string, size_t start,
-                                               size_t size) {
+struct VST_StringView VST_StringViewFromStringRange(VST_String string,
+                                                    size_t start, size_t size) {
   struct VST_StringView strview = {0};
   strview.ptr = VST_StringPtrGet(string) + start;
   strview.size = size;
@@ -424,12 +419,12 @@ struct VST_StringView VST_StringViewFromStringRange(VST_String string, size_t st
 }
 
 struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
-                                            size_t size) {
+                                                 size_t size) {
   struct VST_StringView strview = {0};
   strview.ptr = str + start;
   strview.size = size;
   return strview;
-}  
+}
 
 int VST_StringViewCompare(struct VST_StringView a, struct VST_StringView b) {
   if (a.size != b.size) {
@@ -437,7 +432,7 @@ int VST_StringViewCompare(struct VST_StringView a, struct VST_StringView b) {
   }
 
   char *a_ptr = a.ptr;
-  char *b_ptr = b.ptr;  
+  char *b_ptr = b.ptr;
   for (usize i = 0; i < a.size; i++) {
     if (a_ptr[i] != b_ptr[i]) {
       return a_ptr[i] - b_ptr[i];
@@ -456,8 +451,11 @@ struct VST_StringView VST_StringViewFromString(VST_String string) {
 
 struct VST_StringView VST_StringViewFromStr(char *str) {
   return VST_StringViewFromStrRange(str, 0, iVST_StrLengthGet(str));
-}  
+}
 
+bool VST_StringContains(VST_String haystack, struct VST_StringView needle) {
+  return VST_StringViewEqual(VST_StringFind(haystack, needle), needle);
+}  
 
 #endif
 

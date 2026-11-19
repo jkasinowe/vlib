@@ -31,8 +31,9 @@ int main() {
   full = VST_StringsConcatPath(path1, path2, path3, name);
 
   assert(VST_StringEqual(full, expected));
-  struct VST_StringView needle = VST_StringViewFromStr("what");
+  assert(VST_StringContains(full, VST_StringViewFromStr("models")));
 
+  
   VST_StringsDestroy(name, path1, path2, path3, full, expected);  
   printf("\tOK\n");
   
