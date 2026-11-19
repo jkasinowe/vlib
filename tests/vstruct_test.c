@@ -29,8 +29,9 @@ int main() {
   path2 = VST_StringFromStr("user");
   path3 = VST_StringFromStr("models");  
   full = VST_StringsConcatPath(path1, path2, path3, name);
-  
-  assert(VST_StringEqual(full, expected));  
+
+  assert(VST_StringEqual(full, expected));
+  struct VST_StringView needle = VST_StringViewFromStr("what");
 
   VST_StringsDestroy(name, path1, path2, path3, full, expected);  
   printf("\tOK\n");

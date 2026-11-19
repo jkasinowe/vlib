@@ -7,32 +7,19 @@
 
 /*
 
-  VST_String pwd, name, full;
-  VST_StringsCreate(pwd, name, full);
-
-
-  VST_StringAppend(name, "vlib");
-  VST_StringAppend(name, ".so");
-
-
-  VST_StringAppend(pwd, "/usr/lib/");
-  VST_StringEnsureLast(pwd, "/");
-  VST_StringConcat(pwd, name);
-  VST_StringEnsureLast(pwd, "/");
-
-
-  VST_StringAppend(pwd, "%d", 5);
-
-  VST_StringsDestroy(pwd, name);
-
-  return full;
-
 
 // all char* strings are utf8
  */
 
 
 typedef struct iVST_String *VST_String;
+
+/* Can be printed by specifying "%.*s" format in printf */
+struct VST_StringView {
+  char *ptr;
+  size_t size;
+};  
+
 
 void VST_StringEnsureEndsIn(VST_String string, char end);
 void VST_StringFolderAppendCstr(VST_String string, char *folder_name);
@@ -62,8 +49,6 @@ void iVST_StringsDestroy(VST_String first, ...);
 #define VST_StringsDestroy(first, ...)                                         \
   iVST_StringsDestroy(first, ##__VA_ARGS__, (VST_String *)-1)
 
-
-
 void iVST_StringsAppend(VST_String to, ...);
 void iVST_StringsAppendPath(VST_String to, ...);
 VST_String iVST_StringsConcat(VST_String first, ...);
@@ -80,11 +65,23 @@ VST_String iVST_StringsConcatPath(VST_String first, ...);
 #define VST_StringsConcatPath(first, ...)                                      \
   iVST_StringsConcatPath(first, ##__VA_ARGS__, (VST_String) - 1)
 
-/* This whole thing is taken and repurposed from Sean Barrett's Nothings
-   https://github.com/nothings/stb/blob/master/stb_ds.h
-*/
+struct VST_StringView VST_StringFind(VST_String haystack,
+                                     struct VST_StringView needle);
+struct VST_StringView VST_StringViewFromStringRange(VST_String string,
+                                                    size_t start, size_t end);
+struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
+                                                 size_t size);
+struct VST_StringView VST_StringViewFromString(VST_String string);
 
+/* Because string literals have static lifetime, the stringview created from a
+ * string literal will be valid forever :33. That's really cool */
+struct VST_StringView VST_StringViewFromStr(char *str);
 
+int VST_StringViewCompare(struct VST_StringView a, struct VST_StringView b);
+bool VST_StringViewEqual(struct VST_StringView a, struct VST_StringView b);
+
+/* This dynamic array thingy is taken and repurposed from Sean Barrett's
+ * Nothings https://github.com/nothings/stb/blob/master/stb_ds.h */
 struct iVST_ListHeader {
   size_t capacity;
   size_t count;
@@ -246,15 +243,12 @@ void VST_StringAppendStr(VST_String string, char *str) {
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...) {
   va_list args;
-
-  
   
   for (usize i = 0; i < strlen(fmt); i++) {
     if (fmt[i] == '%') {
       i++;
       
     }      
-
   }    
 }
 
@@ -409,7 +403,61 @@ void VST_StringTrimBegin(VST_String string) {
 void VST_StringTrim(VST_String string) {
   VST_StringTrimBegin(string);
   VST_StringTrimEnd(string);
+}
+
+struct VST_StringView VST_StringFind(VST_String haystack, struct VST_StringView needle) {
+  for (usize i = 0; i < haystack->size - needle.size; i++) {
+    struct VST_StringView haystack_view =
+        VST_StringViewFromStringRange(haystack, i, needle.size);
+    if (VST_StringViewEqual(haystack_view, needle)) return haystack_view;
+  }
+  
+  return (struct VST_StringView){0};
+}
+
+struct VST_StringView VST_StringViewFromStringRange(VST_String string, size_t start,
+                                               size_t size) {
+  struct VST_StringView strview = {0};
+  strview.ptr = VST_StringPtrGet(string) + start;
+  strview.size = size;
+  return strview;
+}
+
+struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
+                                            size_t size) {
+  struct VST_StringView strview = {0};
+  strview.ptr = str + start;
+  strview.size = size;
+  return strview;
 }  
+
+int VST_StringViewCompare(struct VST_StringView a, struct VST_StringView b) {
+  if (a.size != b.size) {
+    return a.size - b.size;
+  }
+
+  char *a_ptr = a.ptr;
+  char *b_ptr = b.ptr;  
+  for (usize i = 0; i < a.size; i++) {
+    if (a_ptr[i] != b_ptr[i]) {
+      return a_ptr[i] - b_ptr[i];
+    }
+  }
+  return 0;
+}
+
+bool VST_StringViewEqual(struct VST_StringView a, struct VST_StringView b) {
+  return !VST_StringViewCompare(a, b);
+}
+
+struct VST_StringView VST_StringViewFromString(VST_String string) {
+  return VST_StringViewFromStringRange(string, 0, string->size);
+}
+
+struct VST_StringView VST_StringViewFromStr(char *str) {
+  return VST_StringViewFromStrRange(str, 0, iVST_StrLengthGet(str));
+}  
+
 
 #endif
 
