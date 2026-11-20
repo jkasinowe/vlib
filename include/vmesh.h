@@ -1,6 +1,6 @@
-// #define VMESH_IMPLEMENTATION
 #ifndef VMESH_H
 #define VMESH_H
+#include "vmem.h"
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -8,6 +8,8 @@ extern "C" {
 #include <stdint.h>
 #include <stdlib.h>
 #include "vlog.h"
+#include "vstruct.h"
+#include "vfs.h"
 
 // define VMESH_DEBUG to show debug info
 
@@ -24,13 +26,16 @@ struct VMESH_Mesh {
   uint32_t vertex_count;
 };
 
-void VMESH_MeshLoadObj(struct VMESH_Mesh *mesh, char *obj_source,
-                       size_t source_length);
+struct VMESH_Mesh VMESH_MeshFromObjNode(VFS_Node node,
+                                        VMEM_Allocator allocator);
+
+struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
+                                          VMEM_Allocator allocator);
+                             
 
 void VMESH_MeshDefaultDestroy(struct VMESH_Mesh *mesh);
 
-void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out);
-
+#define VMESH_IMPLEMENTATION
 #ifdef VMESH_IMPLEMENTATION
 #include <ctype.h>
 #include <stdint.h>
@@ -41,26 +46,6 @@ void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out);
 #define INDEX_SIZE (4)
 #define KEY_SIZE = (INDEX_SIZE * INDEX_SIZE * INDEX_SIZE)
 #define LOOKUP_TABLE_SIZE (KEY_SIZE * INDEX_SIZE);
-
-void VMESH_FileLoad(char *path, char **source_out, size_t *source_length_out) {
-  FILE *file = fopen(path, "r");
-  if (!file) {
-    VLOG_Error("no such file %s", path);
-    abort();
-  }
-  while (fgetc(file) != EOF)
-    ;
-  *source_length_out = ftell(file);
-
-  rewind(file);
-
-  *source_out = (char *)calloc(*source_length_out, sizeof(char));
-  char c;
-  size_t source_index = 0;
-  while ((c = fgetc(file)) != EOF) {
-    (*source_out)[source_index++] = c;
-  }
-}
 
 typedef struct {
   uint32_t pos;
@@ -109,70 +94,50 @@ enum iVMESH_InputType {
   IVMESH_INPUT_TYPE_COMMENT,
 };
 
-enum iVMESH_InputType iVMESH_ParseInputType(char *source, uint32_t source_size,
-                                            size_t *index) {
-  if (*index >= source_size)
-    return IVMESH_INPUT_TYPE_EOF;
-  iVMESH_ParseSpace(source, source_size, index);
-  if (*index >= source_size)
-    return IVMESH_INPUT_TYPE_EOF;
-  switch (source[*index]) {
-  case 'v':
-    (*index)++;
-    if (*index > source_size)
-      break;
-    switch (source[*index]) {
-    case 'n': // vn
-      (*index)++;
-      if (*index < source_size && isspace(source[*index]))
-        return IVMESH_INPUT_TYPE_NORMAL;
-      break;
-    case 't':
-      (*index)++;
-      if (*index < source_size && isspace(source[*index]))
-        return IVMESH_INPUT_TYPE_TEXTURE;
-      break;
-    default:
-      if (isspace(source[*index])) {
-        return IVMESH_INPUT_TYPE_VERTEX;
-      }
-      break;
-    }
-    break;
-  case 'f':
-    (*index)++;
-    if (*index < source_size && isspace(source[*index]))
-      return IVMESH_INPUT_TYPE_FACE;
-    break;
-  case '#':
-  case 'm':
-  case 'o':
-  case 's':
-    (*index)++;
+enum iVMESH_InputType iVMESH_ParseInputType(struct VST_StringView line) {
+  if (VST_StringViewStartsWithStr(line, "vn"))
+    return IVMESH_INPUT_TYPE_NORMAL;
+
+  if (VST_StringViewStartsWithStr(line, "vt"))
+    return IVMESH_INPUT_TYPE_TEXTURE;
+  
+  if (VST_StringViewStartsWithStr(line, "v"))
+    return IVMESH_INPUT_TYPE_VERTEX;
+
+  if (VST_StringViewStartsWithStr(line, "f"))
+    return IVMESH_INPUT_TYPE_FACE;
+
+  if (VST_StringViewStartsWithStr(line, "o") ||
+      VST_StringViewStartsWithStr(line, "model") ||
+      VST_StringViewStartsWithStr(line, "#") ||
+      VST_StringViewStartsWithStr(line, "s"))
     return IVMESH_INPUT_TYPE_COMMENT;
-  }
+  
   VLOG_Error("Couldn't parse input type at %zu", *index);
   abort();
 }
 
-void iVMESH_CountVNTF(char *source, size_t source_size, uint32_t *vert_count,
+void iVMESH_CountVNTF(struct VST_StringView source, uint32_t *vert_count,
                       uint32_t *face_count, uint32_t *uv_count,
                       uint32_t *normal_count) {
   VLOG_Wait("Calculating vertex and index count");
-  char c;
-  size_t char_index = 0;
+  struct VST_StringView source_view = source;
+
   uint32_t lface_count = 0;
   uint32_t lvert_count = 0;
   uint32_t luv_count = 0;
   uint32_t lnormal_count = 0;
 
-  while (char_index < source_size) {
-    if (c == '#') {
-      while (c != '\n')
-        c = source[char_index++];
-    }
-    iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
-    switch (iVMESH_ParseInputType(source, source_size, &char_index)) {
+  struct VST_StringView end_of_line = VST_StringViewFromStr("\n");
+  struct VST_StringView space = VST_StringViewFromStr(" ");
+  struct VST_StringView tab = VST_StringViewFromStr("\t");  
+  
+  usize line_count = VST_StringViewSplitByCount(source_view, end_of_line);
+  for (usize i = 0; i < line_count; i++) {
+    struct VST_StringView line =
+        VST_StringViewShiftBy(&source_view, end_of_line);
+    
+    switch (iVMESH_ParseInputType(line)) {
     case IVMESH_INPUT_TYPE_EOF:
       break;
     case IVMESH_INPUT_TYPE_FACE:
@@ -190,9 +155,6 @@ void iVMESH_CountVNTF(char *source, size_t source_size, uint32_t *vert_count,
     default:
       break;
     }
-    while (char_index < source_size && source[char_index] != '\n')
-      char_index++;
-    char_index++;
   }
   *face_count = lface_count;
   *normal_count = lnormal_count;
@@ -201,44 +163,40 @@ void iVMESH_CountVNTF(char *source, size_t source_size, uint32_t *vert_count,
   VLOG_Ok("Vertex and index count calculated");
 }
 
-Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
-                              uint32_t face_count, float **positions,
-                              uint32_t vcount, float **normals, uint32_t ncount,
-                              float **uvs, uint32_t tcount) {
-  size_t char_index = 0;
-  Index *indices = (Index*)calloc(face_count * 3, sizeof(Index));
+Index *iVMESH_ParseObjIndices(struct VST_StringView source, float **positions,
+                              float **normals, float **uvs) {
+  
+  Index *indices = NULL;
+  
   VLOG_Wait("Gettting vertices");
   fflush(stdout);
 
-  *positions = calloc(vcount * 3, sizeof(float));
-  if (tcount) {
-    *uvs = calloc(tcount * 2, sizeof(float));
-  }
-  *normals = calloc(ncount * 3, sizeof(float));
+  *positions = NULL;
+  *normals = NULL;
+  *uvs = NULL;
+  
+  struct VST_StringView end_of_line = VST_StringViewFromStr("\n");
+  struct VST_StringView space = VST_StringViewFromStr(" ");
+  struct VST_StringView tab = VST_StringViewFromStr("\t");  
+  
+  struct VST_StringView *lines = VST_StringViewSplitByList(source, end_of_line);
 
-  uint32_t cur_index = 0, cur_pos = 0, cur_normal = 0, cur_uv = 0;
-  while (char_index < source_size) {
-    enum iVMESH_InputType type =
-        iVMESH_ParseInputType(source, source_size, &char_index);
-    iVMESH_ParseSpace(source, source_size, &char_index);
-
+  for (usize i = 0; i < VST_ListLength(lines); i++) {
+    struct VST_StringView line = lines[i];
+    struct VST_StringView type_view = VST_StringViewShiftBy(&line, space);
+    
+    enum iVMESH_InputType type = iVMESH_ParseInputType(type_view);
+    
     switch (type) {
-    case IVMESH_INPUT_TYPE_EOF:
-      break;
     case IVMESH_INPUT_TYPE_COMMENT:
-      while (char_index < source_size && source[char_index] != '\n') {
-        char_index++;
-      }
-      iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
       break;
     case IVMESH_INPUT_TYPE_VERTEX: {
-      for (size_t float_count = 0; float_count < 3; float_count++) {
-        iVMESH_ParseSpace(source, source_size, &char_index);
-        (*positions)[cur_pos * 3 + float_count] =
-            iVMESH_ParseFloat(source, source_size, &char_index);
-      }
-      cur_pos++;
-      iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
+      struct VST_StringView *floats = VST_StringViewSplitByList(line, space);
+
+      for (usize i = 0; i < VST_ListLength(floats); i++) {
+	VST_ListPush(
+      }        
+      
       break;
     }
     case IVMESH_INPUT_TYPE_NORMAL: {
@@ -300,6 +258,8 @@ Index *iVMESH_ParseObjIndices(char *source, size_t source_size,
     }
     }
   }
+
+  free(lines);
   return indices;
 }
 
@@ -325,16 +285,26 @@ uint32_t iVMESH_TableFind(Index *table, Index *index, uint32_t face_count) {
   return 0;
 }
 
-void VMESH_MeshLoadObj(struct VMESH_Mesh *mesh, char *source,
-                       size_t source_length) {
+
+struct VMESH_Mesh VMESH_MeshFromObjNode(VFS_Node node,
+                                        VMEM_Allocator allocator) {
+  VST_String source = VFS_NodeStringGet(node);
+  struct VMESH_Mesh mesh = VMESH_MeshFromObjSource(VST_StringViewFromString(source), allocator);
+  VST_StringsDestroy(source);
+  return mesh;
+}
+
+struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
+                                          VMEM_Allocator allocator) {
+  struct VMESH_Mesh mesh = {0};
   uint32_t vert_count, face_count, uv_count, normal_count;
-  iVMESH_CountVNTF(source, source_length, &vert_count, &face_count, &uv_count,
+  iVMESH_CountVNTF(source, &vert_count, &face_count, &uv_count,
                    &normal_count);
 
   float *positions, *normals, *uvs;
 
   Index *indices = iVMESH_ParseObjIndices(
-      source, source_length, face_count, &positions, vert_count, &normals,
+					  source, face_count, &positions, vert_count, &normals,
       normal_count, &uvs, uv_count); // get indices
   Index *lookup_table = malloc(face_count * 3 * sizeof(Index));
   memset(lookup_table, 0xFC, face_count * 3 * sizeof(Index));

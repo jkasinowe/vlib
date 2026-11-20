@@ -1,0 +1,10 @@
+If:
+  PathMatch: .*\.(c|h)$
+CompileFlags:
+  Add: [-std=c99]
+
+---
+If:
+  PathMatch: .*\.(cpp|cc|cxx|mm)$
+CompileFlags:
+  Add: [-std=c++17]

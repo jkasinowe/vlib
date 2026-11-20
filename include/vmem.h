@@ -2,7 +2,8 @@
 #define VMEM_H
 #include "vmath.h"
 
-struct VMEM_Allocator;
+typedef struct VMEM_Allocator *VMEM_Allocator;
+
 
 #ifndef VMEM_ALLOCATOR_DEFAULT_BLOCK_SIZE
 #define VMEM_ALLOCATOR_DEFAULT_BLOCK_SIZE (4 * 1024 * 1024)
@@ -15,17 +16,17 @@ struct VMEM_Allocator;
 
 struct VMEM_Allocator *VMEM_AllocatorCreate(usize flags);
 struct VMEM_Allocator *VMEM_AllocatorCreateEx(usize block_size, usize flags);
-void VMEM_AllocatorDestroy(struct VMEM_Allocator *allocator);
-void *VMEM_Allocate(usize size, struct VMEM_Allocator *allocator);
+void VMEM_AllocatorDestroy(VMEM_Allocator allocator);
+void *VMEM_Allocate(usize size, VMEM_Allocator allocator);
 void *VMEM_Reallocate(void* buffer, usize size);
-void VMEM_AllocatorDebug(FILE* file, struct VMEM_Allocator *allocator);
+void VMEM_AllocatorDebug(FILE* file, VMEM_Allocator allocator);
 
 b8 VMEM_Copy(void* to, usize size, void* from, usize amount);
 
 const char* VMEM_ErrorGet();
 
-#endif // VMEM_H
-#define VMEM_IMPLEMENTATION
+
+//#define VMEM_IMPLEMENTATION
 #ifdef VMEM_IMPLEMENTATION
 #include "vlog.h"
 #include <string.h>
@@ -196,5 +197,6 @@ const char* VMEM_ErrorGet() {
   return "Unimplemented error";
 }  
 
-#endif
+#endif // VMEM_IMPLEMENTATION
 
+#endif // VMEM_H

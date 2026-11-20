@@ -39,14 +39,19 @@ void VST_StringEnsureEndsIn(VST_String string, struct VST_StringView in);
 
 bool VST_StringViewEndsIn(struct VST_StringView view,
                           struct VST_StringView end);
+
 bool VST_StringEndsIn(VST_String string, struct VST_StringView end);
 
-
+bool VST_StringEndsInStr(VST_String string, char *end);
+bool VST_StringViewEndsInStr(struct VST_StringView view, char *end);
 
 bool VST_StringViewStartsWith(struct VST_StringView view,
-                          struct VST_StringView start);
+                              struct VST_StringView start);
+
 bool VST_StringStartsWith(VST_String string, struct VST_StringView start);
 
+bool VST_StringViewStartsWithStr(struct VST_StringView view, char *start);
+bool VST_StringStartsWithStr(VST_String string, char *start);
 
 /* ..Append and ..Concat is the same, but ..Append appends to the first argument
  * while ..Concat returns the concatenation of arguments */
@@ -95,6 +100,13 @@ void VST_StringTrimWhitespaceLeft(VST_String string);
 void VST_StringTrimWhitespaceRight(VST_String string);
 void VST_StringTrimWhitespace(VST_String string);
 
+struct VST_StringView
+VST_StringViewTrimWhitespaceLeft(struct VST_StringView string);
+struct VST_StringView
+VST_StringViewTrimWhitespaceRight(struct VST_StringView string);
+struct VST_StringView
+VST_StringViewTrimWhitespace(struct VST_StringView string);
+
 int VST_StringCompare(VST_String a, VST_String b);
 bool VST_StringEqual(VST_String a, VST_String b);
 char *VST_StringPtrGet(VST_String string);
@@ -125,15 +137,21 @@ size_t VST_StringViewSplitByCount(struct VST_StringView view,
 void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
                            struct VST_StringView *parts);
 
+struct VST_StringView *VST_StringViewSplitByList(struct VST_StringView view,
+                                                 struct VST_StringView by);
+
 size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by);
 void VST_StringSplitBy(VST_String string, struct VST_StringView by,
                        struct VST_StringView *parts);
+struct VST_StringView *VST_StringSplitByList(VST_String view,
+                                             struct VST_StringView by);
 
 size_t VST_StringViewFindAllCount(struct VST_StringView haystack,
                                   struct VST_StringView needle);
 
 size_t VST_StringFindAllCount(VST_String haystack,
                               struct VST_StringView needle);
+
 
 void VST_StringViewFindAll(struct VST_StringView haystack,
                            struct VST_StringView needle,
@@ -207,6 +225,7 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
 
 #define VSTRUCT_IMPLEMENTATION
 #ifdef VSTRUCT_IMPLEMENTATION
+#include "vlog.h"
 #include "vmath.h"
 #include "vmem.h"
 #include <ctype.h>
@@ -481,6 +500,14 @@ bool VST_StringEndsIn(VST_String string, struct VST_StringView end) {
   return VST_StringViewEndsIn(VST_StringViewFromString(string), end);
 }
 
+bool VST_StringEndsInStr(VST_String string, char *end) {
+  return VST_StringViewEndsInStr(VST_StringViewFromString(string), end);
+}
+
+bool VST_StringViewEndsInStr(struct VST_StringView view, char *end) {
+  return VST_StringViewEndsIn(view, VST_StringViewFromStr(end));
+}
+
 void VST_StringEnsureEndsIn(VST_String string, struct VST_StringView end) {
   if (VST_StringEndsIn(string, end))
     return;
@@ -489,7 +516,7 @@ void VST_StringEnsureEndsIn(VST_String string, struct VST_StringView end) {
 }
 
 bool VST_StringViewStartsWith(struct VST_StringView view,
-                          struct VST_StringView start) {
+                              struct VST_StringView start) {
   if (view.size < start.size)
     return false;
   if (start.size == 0) {
@@ -511,6 +538,13 @@ bool VST_StringStartsWith(VST_String string, struct VST_StringView start) {
   return VST_StringViewStartsWith(VST_StringViewFromString(string), start);
 }
 
+bool VST_StringViewStartsWithStr(struct VST_StringView view, char *start) {
+  return VST_StringViewStartsWith(view, VST_StringViewFromStr(start));
+}
+
+bool VST_StringStartsWithStr(VST_String string, char *start) {
+  return VST_StringViewStartsWithStr(VST_StringViewFromString(string), start);
+}
 
 bool VST_StringIsEmpty(VST_String string) {
   return string->size > 0 ? false : true;
@@ -533,20 +567,56 @@ void VST_StringPrint(VST_String string) { puts(VST_StringPtrGet(string)); }
 
 struct VST_StringView VST_StringViewTrimLeft(struct VST_StringView view,
                                              size_t amount) {
-  usize result_size = view.size > amount ? view.size - amount : 0;
+
+  if (view.size <= amount) return (struct VST_StringView) {0};
+
+  usize result_size = view.size - amount;
+
   return VST_StringViewFromSub(view, amount, result_size);
 }
 
 struct VST_StringView VST_StringViewTrimRight(struct VST_StringView view,
                                               size_t amount) {
-  usize result_size = view.size > amount ? view.size - amount : 0;
-  return VST_StringViewFromSub(view, 0, amount);
+  if (view.size <= amount) return (struct VST_StringView) {0};
+
+  usize result_size = view.size - amount;
+  
+  return VST_StringViewFromSub(view, 0, result_size);
 }
 
 struct VST_StringView VST_StringViewTrim(struct VST_StringView view,
                                          size_t left, size_t right) {
-  usize result_size = view.size > right ? view.size - right : 0;
-  return VST_StringViewFromSub(view, left, result_size);
+  view = VST_StringViewTrimLeft(view, left);
+  view = VST_StringViewTrimRight(view, right);  
+  return view;
+}
+
+struct VST_StringView
+VST_StringViewTrimWhitespaceLeft(struct VST_StringView view) {
+  while (view.size) {
+    if (isspace(view.ptr[0])) {
+      view = VST_StringViewTrimLeft(view, 1);
+    } else {
+      break;
+    }      
+  }
+  return view;
+}
+struct VST_StringView
+VST_StringViewTrimWhitespaceRight(struct VST_StringView view) {
+  while (view.size) {
+    if (isspace(view.ptr[view.size - 1])) {
+      view = VST_StringViewTrimRight(view, 1);
+    } else {
+      break;
+    }      
+  }
+  return view;
+}
+struct VST_StringView VST_StringViewTrimWhitespace(struct VST_StringView view) {
+  view = VST_StringViewTrimWhitespaceLeft(view);
+  view = VST_StringViewTrimWhitespaceRight(view);
+  return view;
 }
 
 void VST_StringTrim(VST_String string, size_t left, size_t right) {
@@ -759,6 +829,26 @@ void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
 
   parts[count - 1] = view;
 }
+
+
+
+struct VST_StringView *VST_StringViewSplitByList(struct VST_StringView view,
+                                                 struct VST_StringView by) {
+  struct VST_StringView *list = NULL;
+  
+  while (view.size != 0) {
+    VST_ListPush(list, VST_StringViewShiftBy(&view, by));
+  }
+
+  VST_ListPush(list, view);
+  
+  return list;
+}
+
+struct VST_StringView *VST_StringSplitByList(VST_String string,
+                                             struct VST_StringView by) {
+  return VST_StringViewSplitByList(VST_StringViewFromString(string), by);
+}  
 
 size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by) {
   return VST_StringViewSplitByCount(VST_StringViewFromString(string), by);

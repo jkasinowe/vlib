@@ -1,4 +1,4 @@
-DEBUG = -O0 -ggdb -fsanitize=address
+DEBUG = -O0 -g -gdwarf-4 -fsanitize=address -fno-omit-frame-pointer
 RELEASE = -O3
 
 EFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-variable
@@ -32,6 +32,9 @@ test_vmem: tests/vmem_test.c test_build
 
 test_vsys: tests/vsys_test.c test_build
 	cc tests/vsys_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vsys_test -lSDL3 -lvolk
+
+test_vfs: tests/vfs_test.c test_build
+	cc tests/vfs_test.c $(EFLAGS) $(MODE) -I./include -lm -o $(TEST_BUILD)vfs_test -lSDL3 -lvolk
 
 
 tests: test_vmem test_vmath test_vmesh test_vvox test_vshape test_vstruct

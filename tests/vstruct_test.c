@@ -37,13 +37,15 @@ int main() {
   printf("\tOK\n");
 
   struct VST_StringView expected_parts[] = {
-    VST_StringViewFromStr("home"),
+    VST_StringViewFromStr("    home    "),
     VST_StringViewFromStr("user"),
     VST_StringViewFromStr("models"),
     VST_StringViewFromStr("model.obj"),
     VST_StringViewFromStr("")
   };
 
+  expected_parts[0] = VST_StringViewTrimWhitespace(expected_parts[0]);
+  
   struct VST_StringView delimiter = VST_StringViewFromStr("/");
   
   printf("Testing searching for substrings: ");  
@@ -67,13 +69,15 @@ int main() {
   usize expected_split_count = 5;
   assert(VST_StringSplitByCount(full, delimiter) == expected_split_count);
 
-  struct VST_StringView split_views[expected_split_count];
-  VST_StringSplitBy(full, delimiter, split_views);
+  struct VST_StringView *split_views = VST_StringSplitByList(full, delimiter);
+  assert(VST_ListCount(split_views) == expected_split_count);
   
-  for (usize i = 0; i < expected_split_count; i++) {
+  for (usize i = 0; i < VST_ListCount(split_views); i++) {
     assert(VST_StringViewEqual(split_views[i], expected_parts[i]));
   }
 
+  VST_ListFree(split_views);
+  
   assert(VST_StringStartsWith(full, expected_parts[0]));
   assert(!VST_StringStartsWith(full, expected_parts[1]));  
 
