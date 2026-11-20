@@ -34,14 +34,22 @@ VST_String VST_StringFromSubStr(char *str, size_t start, size_t size);
 #define VST_StringsDestroy(first, ...)                                         \
   iVST_StringsDestroy(first, ##__VA_ARGS__, (VST_String *)-1)
 
-void VST_StringEnsureEndsIn(
-    VST_String string,
-    char symbol); // if there is no *symbol* at the end, put it there
+// if there is no *symbol* at the end, put it there
+void VST_StringEnsureEndsIn(VST_String string, struct VST_StringView in);
+
+bool VST_StringViewEndsIn(struct VST_StringView view,
+                          struct VST_StringView end);
+bool VST_StringEndsIn(VST_String string, struct VST_StringView end);
+
+
+
+bool VST_StringViewStartsWith(struct VST_StringView view,
+                          struct VST_StringView start);
+bool VST_StringStartsWith(VST_String string, struct VST_StringView start);
+
 
 /* ..Append and ..Concat is the same, but ..Append appends to the first argument
- * while ..Concat returns the concatenation of arguments
- */
-
+ * while ..Concat returns the concatenation of arguments */
 #define VST_StringsAppend(to, ...)                                             \
   iVST_StringsAppend(to, ##__VA_ARGS__, (VST_String) - 1)
 
@@ -49,12 +57,24 @@ void VST_StringEnsureEndsIn(
 #define VST_StringsAppendPath(to, ...)                                         \
   iVST_StringsAppendPath(to, ##__VA_ARGS__, (VST_String) - 1)
 
+#define VST_StringsAppendEnsureBetween(between, ...)                           \
+  iVST_StringsAppendEnsureBetween(between, ##__VA_ARGS__, (VST_String) - 1)
+
+#define VST_StringsAppendJoin(with, ...)                                       \
+  iVST_StringsAppendJoin(with, ##__VA_ARGS__, (VST_String) - 1)
+
 #define VST_StringsConcat(first, ...)                                          \
   iVST_StringsConcat(first, ##__VA_ARGS__, (VST_String) - 1)
 
 // concatenating strings, while ensuring there's '/' inbetween
 #define VST_StringsConcatPath(first, ...)                                      \
   iVST_StringsConcatPath(first, ##__VA_ARGS__, (VST_String) - 1)
+
+#define VST_StringsConcatEnsureBetween(between, ...)                           \
+  iVST_StringsConcatEnsureBetween(between, ##__VA_ARGS__, (VST_String) - 1)
+
+#define VST_StringsConcatJoin(with, ...)                                       \
+  iVST_StringsConcatJoin(with, ##__VA_ARGS__, (VST_String) - 1)
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...);
 void VST_StringAppendStr(VST_String string, char *str);
@@ -85,8 +105,13 @@ void iVST_StringsInit(VST_String *first, ...);
 void iVST_StringsDestroy(VST_String first, ...);
 void iVST_StringsAppend(VST_String to, ...);
 void iVST_StringsAppendPath(VST_String to, ...);
+void iVST_StringsAppendJoin(struct VST_StringView with, ...);
+void iVST_StringsAppendEnsureBetween(struct VST_StringView between, ...);
+
 VST_String iVST_StringsConcat(VST_String first, ...);
 VST_String iVST_StringsConcatPath(VST_String first, ...);
+VST_String iVST_StringsConcatJoin(struct VST_StringView with, ...);
+VST_String iVST_StringsConcatEnsureBetween(struct VST_StringView between, ...);
 
 struct VST_StringView VST_StringViewShiftBy(struct VST_StringView *view,
                                             struct VST_StringView by);
@@ -102,7 +127,7 @@ void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
 
 size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by);
 void VST_StringSplitBy(VST_String string, struct VST_StringView by,
-                         struct VST_StringView *parts);
+                       struct VST_StringView *parts);
 
 size_t VST_StringViewFindAllCount(struct VST_StringView haystack,
                                   struct VST_StringView needle);
@@ -119,9 +144,16 @@ void VST_StringFindAll(VST_String haystack, struct VST_StringView needle,
 struct VST_StringView VST_StringFindStr(VST_String haystack, char *needle);
 struct VST_StringView VST_StringFind(VST_String haystack,
                                      struct VST_StringView needle);
+struct VST_StringView VST_StringViewFind(struct VST_StringView haystack,
+                                         struct VST_StringView needle);
+struct VST_StringView VST_StringViewFindStr(struct VST_StringView haystack,
+                                            char *needle);
 
+bool VST_StringViewContains(struct VST_StringView haystack,
+                            struct VST_StringView needle);
+bool VST_StringViewContainsStr(struct VST_StringView haystack, char *needle);
 bool VST_StringContains(VST_String haystack, struct VST_StringView needle);
-bool VST_StringContainsStr(VST_String haystack, char *str);
+bool VST_StringContainsStr(VST_String haystack, char *needle);
 
 struct VST_StringView VST_StringViewFromSub(struct VST_StringView view,
                                             size_t start, size_t size);
@@ -328,18 +360,18 @@ enum iVST_StringsAppendMode { // {"first", "second/", "third"} separator = '/'
 };
 
 void iVST_StringsAppendVaList(VST_String to, va_list strings,
-                              enum iVST_StringsAppendMode mode, char symbol) {
+                              enum iVST_StringsAppendMode mode,
+                              struct VST_StringView with) {
   VST_String current = va_arg(strings, VST_String);
 
   VST_String dummy = (VST_String)-1;
 
   while (current != dummy) {
     if (mode == IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN) {
-      VST_StringEnsureEndsIn(to, symbol);
+      VST_StringEnsureEndsIn(to, with);
     }
     if (mode == IVST_STRINGS_APPEND_MODE_JOIN_WITH) {
-      char str[2] = {symbol, 0};
-      VST_StringAppendStr(to, str);
+      VST_StringAppendStringView(to, with);
     }
     VST_StringAppendStr(to, VST_StringPtrGet(current));
     current = va_arg(strings, VST_String);
@@ -351,7 +383,8 @@ void iVST_StringsAppendVaList(VST_String to, va_list strings,
 void iVST_StringsAppend(VST_String to, ...) {
   va_list strings;
   va_start(strings, to);
-  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_JOIN, 0);
+  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_JOIN,
+                           (struct VST_StringView){0});
 }
 
 VST_String iVST_StringsConcat(VST_String first, ...) {
@@ -359,8 +392,27 @@ VST_String iVST_StringsConcat(VST_String first, ...) {
   va_start(strings, first);
 
   VST_String result = VST_StringDuplicate(first);
-  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN, 0);
+  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN,
+                           (struct VST_StringView){0});
 
+  return result;
+}
+
+VST_String iVST_StringsConcatJoin(struct VST_StringView with, ...) {
+  va_list strings;
+  va_start(strings, with);
+  VST_String result = VST_StringDuplicate(va_arg(strings, VST_String));
+  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN_WITH,
+                           with);
+  return result;
+}
+
+VST_String iVST_StringsConcatEnsureBetween(struct VST_StringView between, ...) {
+  va_list strings;
+  va_start(strings, between);
+  VST_String result = VST_StringDuplicate(va_arg(strings, VST_String));
+  iVST_StringsAppendVaList(result, strings,
+                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, between);
   return result;
 }
 
@@ -369,8 +421,10 @@ VST_String iVST_StringsConcatPath(VST_String first, ...) {
   va_start(strings, first);
 
   VST_String result = VST_StringDuplicate(first);
+  struct VST_StringView delimiter = VST_StringViewFromStr("/");
+
   iVST_StringsAppendVaList(result, strings,
-                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, '/');
+                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, delimiter);
 
   return result;
 }
@@ -404,16 +458,59 @@ VST_String VST_StringCreate() {
   return string;
 }
 
-void VST_StringEnsureEndsIn(VST_String string, char end) {
-  if (!VST_StringIsEmpty(string)) {
-    if (VST_StringPtrGet(string)[string->size - 1] == end) {
-      return;
-    }
+bool VST_StringViewEndsIn(struct VST_StringView view,
+                          struct VST_StringView end) {
+  if (view.size < end.size)
+    return false;
+  if (end.size == 0) {
+    if (view.size == 0)
+      return true;
+    return false;
   }
+  if (!VST_StringViewContains(view, end))
+    return false;
 
-  char end_str[2] = {end, 0};
-  VST_StringAppendStr(string, end_str);
+  struct VST_StringView found = VST_StringViewFind(view, end);
+  if (found.offset != view.offset + view.size - end.size)
+    return false;
+
+  return true;
 }
+
+bool VST_StringEndsIn(VST_String string, struct VST_StringView end) {
+  return VST_StringViewEndsIn(VST_StringViewFromString(string), end);
+}
+
+void VST_StringEnsureEndsIn(VST_String string, struct VST_StringView end) {
+  if (VST_StringEndsIn(string, end))
+    return;
+
+  VST_StringAppendStringView(string, end);
+}
+
+bool VST_StringViewStartsWith(struct VST_StringView view,
+                          struct VST_StringView start) {
+  if (view.size < start.size)
+    return false;
+  if (start.size == 0) {
+    if (view.size == 0)
+      return true;
+    return false;
+  }
+  if (!VST_StringViewContains(view, start))
+    return false;
+
+  struct VST_StringView found = VST_StringViewFind(view, start);
+  if (found.offset != view.offset)
+    return false;
+
+  return true;
+}
+
+bool VST_StringStartsWith(VST_String string, struct VST_StringView start) {
+  return VST_StringViewStartsWith(VST_StringViewFromString(string), start);
+}
+
 
 bool VST_StringIsEmpty(VST_String string) {
   return string->size > 0 ? false : true;
@@ -422,8 +519,10 @@ bool VST_StringIsEmpty(VST_String string) {
 void iVST_StringsAppendPath(VST_String to, ...) {
   va_list strings;
   va_start(strings, to);
+
+  struct VST_StringView delimiter = VST_StringViewFromStr("/");
   iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN,
-                           '/');
+                           delimiter);
 }
 
 VST_String VST_StringDuplicate(VST_String string) {
@@ -514,6 +613,11 @@ struct VST_StringView VST_StringViewFind(struct VST_StringView haystack,
   return (struct VST_StringView){0};
 }
 
+struct VST_StringView VST_StringViewFindStr(struct VST_StringView haystack,
+                                            char *needle) {
+  return VST_StringViewFind(haystack, VST_StringViewFromStr(needle));
+}
+
 struct VST_StringView VST_StringFind(VST_String haystack,
                                      struct VST_StringView needle) {
   return VST_StringViewFind(VST_StringViewFromString(haystack), needle);
@@ -580,8 +684,17 @@ struct VST_StringView VST_StringViewFromStr(char *str) {
   return result;
 }
 
+bool VST_StringViewContains(struct VST_StringView haystack,
+                            struct VST_StringView needle) {
+  return VST_StringViewEqual(VST_StringViewFind(haystack, needle), needle);
+}
+
+bool VST_StringViewContainsStr(struct VST_StringView haystack, char *needle) {
+  return VST_StringViewContains(haystack, VST_StringViewFromStr(needle));
+}
+
 bool VST_StringContains(VST_String haystack, struct VST_StringView needle) {
-  return VST_StringViewEqual(VST_StringFind(haystack, needle), needle);
+  return VST_StringViewContains(VST_StringViewFromString(haystack), needle);
 }
 
 bool VST_StringContainsStr(VST_String haystack, char *str) {
@@ -647,15 +760,13 @@ void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
   parts[count - 1] = view;
 }
 
-
 size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by) {
   return VST_StringViewSplitByCount(VST_StringViewFromString(string), by);
 }
 void VST_StringSplitBy(VST_String string, struct VST_StringView by,
-                         struct VST_StringView *parts) {
+                       struct VST_StringView *parts) {
   VST_StringViewSplitBy(VST_StringViewFromString(string), by, parts);
-}  
-
+}
 
 VST_String VST_StringFromSub(struct VST_StringView view, size_t start,
                              size_t size) {

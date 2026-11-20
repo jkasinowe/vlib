@@ -25,7 +25,7 @@ int main() {
   expected = VST_StringFromStr("home/user/models/model.obj/");
   name = VST_StringFromStr("   model.obj/    ");
   VST_StringTrimWhitespace(name);  
-  path1 = VST_StringFromStr("home");
+  path1 = VST_StringFromStr("home/");
   path2 = VST_StringFromStr("user");
   path3 = VST_StringFromStr("models");  
   full = VST_StringsConcatPath(path1, path2, path3, name);
@@ -71,8 +71,11 @@ int main() {
   VST_StringSplitBy(full, delimiter, split_views);
   
   for (usize i = 0; i < expected_split_count; i++) {
-    assert(VST_StringViewEqual(split_views[i], expected_parts[i]));    
+    assert(VST_StringViewEqual(split_views[i], expected_parts[i]));
   }
+
+  assert(VST_StringStartsWith(full, expected_parts[0]));
+  assert(!VST_StringStartsWith(full, expected_parts[1]));  
 
   printf("\tOK\n");
   
