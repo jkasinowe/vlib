@@ -16,8 +16,17 @@ struct iVST_String; // 'opaque' structure, should not be accessed directly
 typedef struct iVST_String *VST_String;
 
 VST_String VST_StringCreate();
-VST_String VST_StringFromStr(char *str);
 VST_String VST_StringDuplicate(VST_String string);
+
+VST_String VST_StringFromStr(char *str);
+VST_String VST_StringFromStringView(struct VST_StringView view);
+#define VST_StringFromString(string) VST_StringDuplicate(string)
+
+VST_String VST_StringFromSub(struct VST_StringView view, size_t start,
+                             size_t size);
+VST_String VST_StringFromSubString(VST_String string, size_t start,
+                                   size_t size);
+VST_String VST_StringFromSubStr(char *str, size_t start, size_t size);
 
 #define VST_StringsInit(first, ...)                                            \
   iVST_StringsInit(first, ##__VA_ARGS__, (VST_String *)-1)
@@ -49,10 +58,22 @@ void VST_StringEnsureEndsIn(
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...);
 void VST_StringAppendStr(VST_String string, char *str);
+void VST_StringAppendStringView(VST_String string, struct VST_StringView view);
 
-void VST_StringTrimEnd(VST_String string);
-void VST_StringTrimBegin(VST_String string);
-void VST_StringTrim(VST_String string);
+void VST_StringTrimLeft(VST_String string, size_t amount);
+void VST_StringTrimRight(VST_String string, size_t amount);
+void VST_StringTrim(VST_String string, size_t left, size_t right);
+
+struct VST_StringView VST_StringViewTrimLeft(struct VST_StringView view,
+                                             size_t amount);
+struct VST_StringView VST_StringViewTrimRight(struct VST_StringView view,
+                                              size_t amount);
+struct VST_StringView VST_StringViewTrim(struct VST_StringView view,
+                                         size_t left, size_t right);
+
+void VST_StringTrimWhitespaceLeft(VST_String string);
+void VST_StringTrimWhitespaceRight(VST_String string);
+void VST_StringTrimWhitespace(VST_String string);
 
 int VST_StringCompare(VST_String a, VST_String b);
 bool VST_StringEqual(VST_String a, VST_String b);
@@ -67,14 +88,48 @@ void iVST_StringsAppendPath(VST_String to, ...);
 VST_String iVST_StringsConcat(VST_String first, ...);
 VST_String iVST_StringsConcatPath(VST_String first, ...);
 
+struct VST_StringView VST_StringViewShiftBy(struct VST_StringView *view,
+                                            struct VST_StringView by);
+struct VST_StringView VST_StringViewShiftByStr(struct VST_StringView *view,
+                                               char *by);
+struct VST_StringView VST_StringViewShiftByString(struct VST_StringView *view,
+                                                  VST_String by);
+
+size_t VST_StringViewSplitByCount(struct VST_StringView view,
+                                  struct VST_StringView by);
+void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
+                           struct VST_StringView *parts);
+
+size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by);
+void VST_StringSplitBy(VST_String string, struct VST_StringView by,
+                         struct VST_StringView *parts);
+
+size_t VST_StringViewFindAllCount(struct VST_StringView haystack,
+                                  struct VST_StringView needle);
+
+size_t VST_StringFindAllCount(VST_String haystack,
+                              struct VST_StringView needle);
+
+void VST_StringViewFindAll(struct VST_StringView haystack,
+                           struct VST_StringView needle,
+                           struct VST_StringView *views);
+void VST_StringFindAll(VST_String haystack, struct VST_StringView needle,
+                       struct VST_StringView *views);
+
+struct VST_StringView VST_StringFindStr(VST_String haystack, char *needle);
 struct VST_StringView VST_StringFind(VST_String haystack,
                                      struct VST_StringView needle);
-bool VST_StringContains(VST_String haystack, struct VST_StringView needle);
 
-struct VST_StringView VST_StringViewFromStringRange(VST_String string,
-                                                    size_t start, size_t end);
-struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
-                                                 size_t size);
+bool VST_StringContains(VST_String haystack, struct VST_StringView needle);
+bool VST_StringContainsStr(VST_String haystack, char *str);
+
+struct VST_StringView VST_StringViewFromSub(struct VST_StringView view,
+                                            size_t start, size_t size);
+struct VST_StringView VST_StringViewFromSubStr(char *str, size_t start,
+                                               size_t size);
+struct VST_StringView VST_StringViewFromSubString(VST_String string,
+                                                  size_t start, size_t size);
+
 struct VST_StringView VST_StringViewFromString(VST_String string);
 
 /* Because string literals have static lifetime, the stringview created from a
@@ -118,7 +173,7 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
 
 #define VST_ListFree(array) (free(iVST_ListHeaderGet(array)))
 
-//#define VSTRUCT_IMPLEMENTATION
+#define VSTRUCT_IMPLEMENTATION
 #ifdef VSTRUCT_IMPLEMENTATION
 #include "vmath.h"
 #include "vmem.h"
@@ -221,8 +276,8 @@ usize iVST_StrLengthGet(char *str) {
   return i;
 }
 
-void VST_StringAppendStr(VST_String string, char *str) {
-  usize str_size = iVST_StrLengthGet(str);
+void VST_StringAppendStringView(VST_String string, struct VST_StringView view) {
+  usize str_size = view.size;
   usize needed_size = string->start;
   needed_size += string->size;
   needed_size += str_size + 1;
@@ -235,11 +290,15 @@ void VST_StringAppendStr(VST_String string, char *str) {
   char *copy_to_start = string->ptr + string->start + string->size;
   usize copy_to_remaining = string->capacity - string->size - string->start;
 
-  if (VMEM_Copy(copy_to_start, copy_to_remaining, str, str_size)) {
+  if (VMEM_Copy(copy_to_start, copy_to_remaining, view.ptr, str_size)) {
     VLOG_Error("Unable to copy to string: %s", VMEM_ErrorGet());
   }
   string->size += str_size;
   string->ptr[string->start + string->size] = '\0';
+}
+
+void VST_StringAppendStr(VST_String string, char *str) {
+  VST_StringAppendStringView(string, VST_StringViewFromStr(str));
 }
 
 void VST_StringAppendFmt(VST_String string, char *fmt, ...) {
@@ -252,11 +311,14 @@ void VST_StringAppendFmt(VST_String string, char *fmt, ...) {
   }
 }
 
-VST_String VST_StringFromStr(char *str) {
-  VST_String string;
-  VST_StringsInit(&string);
-  VST_StringAppendStr(string, str);
+VST_String VST_StringFromStringView(struct VST_StringView view) {
+  VST_String string = VST_StringCreate();
+  VST_StringAppendStringView(string, view);
   return string;
+}
+
+VST_String VST_StringFromStr(char *str) {
+  return VST_StringFromStringView(VST_StringViewFromStr(str));
 }
 
 enum iVST_StringsAppendMode { // {"first", "second/", "third"} separator = '/'
@@ -370,42 +432,81 @@ VST_String VST_StringDuplicate(VST_String string) {
 
 void VST_StringPrint(VST_String string) { puts(VST_StringPtrGet(string)); }
 
-void VST_StringTrimEnd(VST_String string) {
-  while (true) {
-    if (VST_StringIsEmpty(string))
-      return;
-    char *strptr = VST_StringPtrGet(string);
-    if (!isspace(strptr[string->size - 1]))
-      return;
-    string->size--;
-    VST_StringPtrGet(string)[string->size] = '\0';
-  }
+struct VST_StringView VST_StringViewTrimLeft(struct VST_StringView view,
+                                             size_t amount) {
+  usize result_size = view.size > amount ? view.size - amount : 0;
+  return VST_StringViewFromSub(view, amount, result_size);
 }
 
-void VST_StringTrimBegin(VST_String string) {
-  while (true) {
+struct VST_StringView VST_StringViewTrimRight(struct VST_StringView view,
+                                              size_t amount) {
+  usize result_size = view.size > amount ? view.size - amount : 0;
+  return VST_StringViewFromSub(view, 0, amount);
+}
+
+struct VST_StringView VST_StringViewTrim(struct VST_StringView view,
+                                         size_t left, size_t right) {
+  usize result_size = view.size > right ? view.size - right : 0;
+  return VST_StringViewFromSub(view, left, result_size);
+}
+
+void VST_StringTrim(VST_String string, size_t left, size_t right) {
+  VST_StringTrimLeft(string, left);
+  VST_StringTrimRight(string, right);
+}
+
+void VST_StringTrimLeft(VST_String string, size_t amount) {
+  for (usize i = 0; i < amount; i++) {
     if (VST_StringIsEmpty(string))
-      return;
-    if (!isspace(VST_StringPtrGet(string)[0]))
       return;
     string->start++;
     string->size--;
   }
 }
 
-void VST_StringTrim(VST_String string) {
-  VST_StringTrimBegin(string);
-  VST_StringTrimEnd(string);
+void VST_StringTrimRight(VST_String string, size_t amount) {
+  for (usize i = 0; i < amount; i++) {
+    if (VST_StringIsEmpty(string))
+      return;
+    string->size--;
+    VST_StringPtrGet(string)[string->size] = '\0';
+  }
 }
 
-struct VST_StringView VST_StringFind(VST_String haystack,
-                                     struct VST_StringView needle) {
-  if (needle.size > haystack->size) {
+void VST_StringTrimWhitespaceRight(VST_String string) {
+  while (true) {
+    if (VST_StringIsEmpty(string))
+      return;
+    char *strptr = VST_StringPtrGet(string);
+    if (!isspace(strptr[string->size - 1]))
+      return;
+    VST_StringTrimRight(string, 1);
+  }
+}
+
+void VST_StringTrimWhitespaceLeft(VST_String string) {
+  while (true) {
+    if (VST_StringIsEmpty(string))
+      return;
+    if (!isspace(VST_StringPtrGet(string)[0]))
+      return;
+    VST_StringTrimLeft(string, 1);
+  }
+}
+
+void VST_StringTrimWhitespace(VST_String string) {
+  VST_StringTrimWhitespaceLeft(string);
+  VST_StringTrimWhitespaceRight(string);
+}
+
+struct VST_StringView VST_StringViewFind(struct VST_StringView haystack,
+                                         struct VST_StringView needle) {
+  if (needle.size > haystack.size) {
     return (struct VST_StringView){0};
-  }    
-  for (usize i = 0; i < haystack->size - needle.size; i++) {
+  }
+  for (usize i = 0; i < haystack.size - needle.size + 1; i++) {
     struct VST_StringView haystack_view =
-        VST_StringViewFromStringRange(haystack, i, needle.size);
+        VST_StringViewFromSub(haystack, i, needle.size);
     if (VST_StringViewEqual(haystack_view, needle))
       return haystack_view;
   }
@@ -413,20 +514,33 @@ struct VST_StringView VST_StringFind(VST_String haystack,
   return (struct VST_StringView){0};
 }
 
-struct VST_StringView VST_StringViewFromStringRange(VST_String string,
-                                                    size_t start, size_t size) {
-  struct VST_StringView strview = {0};
-  strview.ptr = VST_StringPtrGet(string) + start;
-  strview.size = size;
-  return strview;
+struct VST_StringView VST_StringFind(VST_String haystack,
+                                     struct VST_StringView needle) {
+  return VST_StringViewFind(VST_StringViewFromString(haystack), needle);
 }
 
-struct VST_StringView VST_StringViewFromStrRange(char *str, size_t start,
-                                                 size_t size) {
-  struct VST_StringView strview = {0};
-  strview.ptr = str + start;
-  strview.size = size;
-  return strview;
+struct VST_StringView VST_StringFindStr(VST_String haystack, char *needle) {
+  return VST_StringViewFind(VST_StringViewFromString(haystack),
+                            VST_StringViewFromStr(needle));
+}
+
+struct VST_StringView VST_StringViewFromSub(struct VST_StringView view,
+                                            size_t start, size_t size) {
+  struct VST_StringView result = {0};
+  result.size = size;
+  result.offset = view.offset + start;
+  result.ptr = view.ptr + start;
+  return result;
+}
+
+struct VST_StringView VST_StringViewFromSubString(VST_String string,
+                                                  size_t start, size_t size) {
+  return VST_StringViewFromSub(VST_StringViewFromString(string), start, size);
+}
+
+struct VST_StringView VST_StringViewFromSubStr(char *str, size_t start,
+                                               size_t size) {
+  return VST_StringViewFromSub(VST_StringViewFromStr(str), start, size);
 }
 
 int VST_StringViewCompare(struct VST_StringView a, struct VST_StringView b) {
@@ -449,16 +563,153 @@ bool VST_StringViewEqual(struct VST_StringView a, struct VST_StringView b) {
 }
 
 struct VST_StringView VST_StringViewFromString(VST_String string) {
-  return VST_StringViewFromStringRange(string, 0, string->size);
+  struct VST_StringView result = {0};
+  result.offset = 0;
+  result.size = string->size;
+  result.ptr = VST_StringPtrGet(string);
+
+  return result;
 }
 
 struct VST_StringView VST_StringViewFromStr(char *str) {
-  return VST_StringViewFromStrRange(str, 0, iVST_StrLengthGet(str));
+  struct VST_StringView result = {0};
+  result.offset = 0;
+  result.ptr = str;
+  result.size = iVST_StrLengthGet(str);
+
+  return result;
 }
 
 bool VST_StringContains(VST_String haystack, struct VST_StringView needle) {
   return VST_StringViewEqual(VST_StringFind(haystack, needle), needle);
+}
+
+bool VST_StringContainsStr(VST_String haystack, char *str) {
+  return VST_StringContains(haystack, VST_StringViewFromStr(str));
+}
+
+VST_String VST_StringShiftBy(VST_String string, struct VST_StringView by) {
+  struct VST_StringView found = VST_StringFind(string, by);
+
+  VST_String left = VST_StringFromSubString(string, 0, found.offset);
+  VST_StringTrimLeft(string, found.offset + found.size);
+
+  return left;
+}
+
+VST_String VST_StringShiftByStr(VST_String string, char *by) {
+  return VST_StringShiftBy(string, VST_StringViewFromStr(by));
+}
+
+VST_String VST_StringShiftByString(VST_String string, VST_String by) {
+  return VST_StringShiftBy(string, VST_StringViewFromString(by));
+}
+
+struct VST_StringView VST_StringViewShiftAt(struct VST_StringView *view,
+                                            size_t index) {
+  struct VST_StringView left = VST_StringViewFromSub(*view, 0, index);
+  *view = VST_StringViewTrimLeft(*view, index);
+  return left;
+}
+
+struct VST_StringView VST_StringViewShiftBy(struct VST_StringView *view,
+                                            struct VST_StringView by) {
+  struct VST_StringView found = VST_StringViewFind(*view, by);
+  struct VST_StringView left =
+      VST_StringViewFromSub(*view, 0, found.offset - view->offset);
+  *view =
+      VST_StringViewTrimLeft(*view, found.offset + found.size - view->offset);
+  return left;
+}
+
+struct VST_StringView VST_StringViewShiftByStr(struct VST_StringView *view,
+                                               char *by) {
+  return VST_StringViewShiftBy(view, VST_StringViewFromStr(by));
+}
+struct VST_StringView VST_StringViewShiftByString(struct VST_StringView *view,
+                                                  VST_String by) {
+  return VST_StringViewShiftBy(view, VST_StringViewFromString(by));
+}
+
+size_t VST_StringViewSplitByCount(struct VST_StringView view,
+                                  struct VST_StringView by) {
+  return VST_StringViewFindAllCount(view, by) + 1;
+}
+
+void VST_StringViewSplitBy(struct VST_StringView view, struct VST_StringView by,
+                           struct VST_StringView *parts) {
+  usize count = VST_StringViewSplitByCount(view, by);
+
+  for (usize i = 0; i < count - 1; i++) {
+    parts[i] = VST_StringViewShiftBy(&view, by);
+  }
+
+  parts[count - 1] = view;
+}
+
+
+size_t VST_StringSplitByCount(VST_String string, struct VST_StringView by) {
+  return VST_StringViewSplitByCount(VST_StringViewFromString(string), by);
+}
+void VST_StringSplitBy(VST_String string, struct VST_StringView by,
+                         struct VST_StringView *parts) {
+  VST_StringViewSplitBy(VST_StringViewFromString(string), by, parts);
 }  
+
+
+VST_String VST_StringFromSub(struct VST_StringView view, size_t start,
+                             size_t size) {
+  struct VST_StringView temp = VST_StringViewFromSub(view, start, size);
+  return VST_StringFromStringView(temp);
+}
+
+VST_String VST_StringFromSubString(VST_String string, size_t start,
+                                   size_t size) {
+  return VST_StringFromSub(VST_StringViewFromString(string), start, size);
+}
+
+VST_String VST_StringFromSubStr(char *str, size_t start, size_t size) {
+  return VST_StringFromSub(VST_StringViewFromStr(str), start, size);
+}
+
+size_t VST_StringViewFindAllCount(struct VST_StringView haystack,
+                                  struct VST_StringView needle) {
+  struct VST_StringView found = VST_StringViewFind(haystack, needle);
+  if (!VST_StringViewEqual(found, needle))
+    return 0;
+  size_t count = 0;
+
+  while (VST_StringViewEqual(found, needle)) {
+    count++;
+    haystack = VST_StringViewTrimLeft(haystack, found.offset + found.size -
+                                                    haystack.offset);
+    found = VST_StringViewFind(haystack, needle);
+  }
+
+  return count;
+}
+
+void VST_StringViewFindAll(struct VST_StringView haystack,
+                           struct VST_StringView needle,
+                           struct VST_StringView *views) {
+  usize count = VST_StringViewFindAllCount(haystack, needle);
+  for (usize i = 0; i < count; i++) {
+    views[i] = VST_StringViewFind(haystack, needle);
+    haystack = VST_StringViewTrimLeft(
+        haystack, views[i].offset + views[i].size - haystack.offset);
+  }
+}
+
+void VST_StringFindAll(VST_String haystack, struct VST_StringView needle,
+                       struct VST_StringView *views) {
+  return VST_StringViewFindAll(VST_StringViewFromString(haystack), needle,
+                               views);
+}
+
+size_t VST_StringFindAllCount(VST_String haystack,
+                              struct VST_StringView needle) {
+  return VST_StringViewFindAllCount(VST_StringViewFromString(haystack), needle);
+}
 
 #endif
 
