@@ -10,7 +10,7 @@ b8 VVOX_VoxelGet(b8 *voxels, u32 voxel_count[3], u32 x, u32 y, u32 z);
 u8 VVOX_VoxelNeighbourCountGet(b8 *voxels, u32 voxel_count[3], u32 x, u32 y, u32 z);
 
 
-#ifdef VVOX_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 
 #include "../include/vshape.h"
 #include <math.h>

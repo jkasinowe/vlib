@@ -1,31 +1,32 @@
-#define VMESH_IMPLEMENTATION
+#define VMEM_IMPLEMENTATION
 #define VVOX_IMPLEMENTATION
-#define VSHAPE_IMPLEMENTATION
-#include "../include/vmesh.h"
-#include "../include/vvox.h"
 #define VMATH_IMPLEMENTATION
-#include "../include/vmath.h"
-#include <float.h>
+#define VSHAPE_IMPLEMENTATION
+#include <stdio.h>
 #include <stddef.h>
+#include "../include/vmesh.h"
+#include "../include/vstruct.h"
+#include "../include/vmath.h"
+#include "../include/vvox.h"
+
+
 
 typedef struct VMESH_Mesh Mesh;
 typedef struct VMESH_Vertex Vertex;
 
 int main() {
   printf("Testing voxelization..");
-  fflush(stdout);  
-  Mesh *mesh = malloc(sizeof(Mesh));
-  char *source = NULL;
-  size_t source_size = 0;
-  VMESH_FileLoad("models/box.obj", &source, &source_size);
-
-  VMESH_MeshLoadObj(mesh, source, source_size);
+  fflush(stdout);
+  
+  struct VST_StringView path =  VST_StringViewFromStr("models/box.obj");
+  VFS_Node file = VFS_NodeFromPath(path);
+  struct VMESH_Mesh mesh = VMESH_MeshFromObjNode(file, NULL);
   f32 voxel_size = 0.01;
 
   u32 voxel_count[3];
   b8 *voxels = VVOX_VerticesToVoxels(
-      mesh->vertices, mesh->vertex_count, sizeof(Vertex), offsetof(Vertex, pos),
-      mesh->indices, mesh->index_count, voxel_size, voxel_count);
+      mesh.vertices, mesh.vertex_count, sizeof(Vertex), offsetof(Vertex, pos),
+      mesh.indices, mesh.index_count, voxel_size, voxel_count);
 
   /*  
   const u32 z = 1; // x voxel_count[2]/12;
@@ -43,8 +44,7 @@ int main() {
   */
   free(voxels);
   VMESH_MeshDefaultDestroy(mesh);
-  free(source);
-  free(mesh);
+  VFS_NodesDestroy(file);
   printf("\tOK\n");
   return 0;
 }

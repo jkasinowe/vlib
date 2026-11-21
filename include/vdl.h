@@ -32,7 +32,7 @@ void VDL_LibraryPrint(FILE* file, struct VDL_Library *library);
 void VDL_LibraryUnload(struct VDL_Library library);
 
 
-#ifdef VDL_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 #include <dirent.h>
 #include <dlfcn.h>
 #include <stdio.h>

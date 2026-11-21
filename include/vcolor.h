@@ -1,4 +1,5 @@
-
+#ifndef VCOLOR_H
+#define VCOLOR_H
 // Colors are arrays of floats
 // i.e. RGBA = float[4]
 //
@@ -34,7 +35,7 @@ void  VRGB_Copy(float* to, float* from);
 
 
 //#endif
-#ifdef VCOLOR_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 
 
 void VRGBA_Copy(float* to, float* from) {
@@ -51,4 +52,5 @@ void VRGB_Copy(float* to, float* from) {
 
 
 
+#endif
 #endif

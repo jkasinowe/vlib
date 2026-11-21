@@ -1,11 +1,12 @@
+#ifndef VMATH_H
+#define VMATH_H
+
 #include <stdint.h>
 #include <math.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <assert.h>
 #include <stdlib.h>
-//#ifndef _VMATH_H_
-//#define _VMATH_H_
 
 // Some typedefs
 typedef uint8_t  u8;
@@ -188,7 +189,7 @@ void VM44_V3Multiply(f32 mat[16], f32 v[3]);
 
 
 //#endif
-#ifdef VMATH_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 
 // the infamous quake quick inverse square root function (Comments preserved)
 f32 VM_InverseSqrt(f32 number) {
@@ -871,4 +872,5 @@ void VM44_V3Multiply(f32 mat[16], f32 v[3]) {
     VM3_Copy(v, out);
 }
 
+#endif
 #endif

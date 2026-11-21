@@ -26,8 +26,12 @@
 #define VLOG_Ok(...)   iVLOG_Log(VLOG_OK, ##__VA_ARGS__)
 #define VLOG_Wait(...) iVLOG_Log(VLOG_WAIT, ##__VA_ARGS__)
 #define VLOG_Error(...)                                                        \
-  iVLOG_Log(VLOG_ERROR, ##__VA_ARGS__);                                        \
-  abort()
+  do {                                                                         \
+    iVLOG_Log(VLOG_ERROR, ##__VA_ARGS__);                                      \
+    abort();								\
+  } while (0)
+
+
 
 #define VLOG_Info(...) iVLOG_Log(VLOG_INFO, ##__VA_ARGS__)
 

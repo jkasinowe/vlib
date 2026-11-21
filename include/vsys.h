@@ -186,8 +186,7 @@ void VSYS_VulkanInstanceSurfaceDestroy(void *vulkan_instance,
 
 
 #endif
-//#define VSYS_IMPLEMENTATION
-#ifdef VSYS_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_opengl.h>

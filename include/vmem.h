@@ -25,9 +25,7 @@ b8 VMEM_Copy(void* to, usize size, void* from, usize amount);
 
 const char* VMEM_ErrorGet();
 
-
-//#define VMEM_IMPLEMENTATION
-#ifdef VMEM_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 #include "vlog.h"
 #include <string.h>
 

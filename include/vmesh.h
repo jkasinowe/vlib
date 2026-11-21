@@ -5,11 +5,11 @@
 extern "C" {
 #endif
 
-#include <stdint.h>
-#include <stdlib.h>
+#include "vfs.h"
 #include "vlog.h"
 #include "vstruct.h"
-#include "vfs.h"
+#include <stdint.h>
+#include <stdlib.h>
 
 // define VMESH_DEBUG to show debug info
 
@@ -31,12 +31,10 @@ struct VMESH_Mesh VMESH_MeshFromObjNode(VFS_Node node,
 
 struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
                                           VMEM_Allocator allocator);
-                             
 
-void VMESH_MeshDefaultDestroy(struct VMESH_Mesh *mesh);
+void VMESH_MeshDefaultDestroy(struct VMESH_Mesh mesh);
 
-#define VMESH_IMPLEMENTATION
-#ifdef VMESH_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 #include <ctype.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -100,7 +98,7 @@ enum iVMESH_InputType iVMESH_ParseInputType(struct VST_StringView line) {
 
   if (VST_StringViewStartsWithStr(line, "vt"))
     return IVMESH_INPUT_TYPE_TEXTURE;
-  
+
   if (VST_StringViewStartsWithStr(line, "v"))
     return IVMESH_INPUT_TYPE_VERTEX;
 
@@ -112,8 +110,8 @@ enum iVMESH_InputType iVMESH_ParseInputType(struct VST_StringView line) {
       VST_StringViewStartsWithStr(line, "#") ||
       VST_StringViewStartsWithStr(line, "s"))
     return IVMESH_INPUT_TYPE_COMMENT;
-  
-  VLOG_Error("Couldn't parse input type at %zu", *index);
+
+  VLOG_Error("Couldn't parse input type, offset %zu: %.*s", line.offset, (int)line.size, line.ptr);
   abort();
 }
 
@@ -130,13 +128,13 @@ void iVMESH_CountVNTF(struct VST_StringView source, uint32_t *vert_count,
 
   struct VST_StringView end_of_line = VST_StringViewFromStr("\n");
   struct VST_StringView space = VST_StringViewFromStr(" ");
-  struct VST_StringView tab = VST_StringViewFromStr("\t");  
-  
+  struct VST_StringView tab = VST_StringViewFromStr("\t");
+
   usize line_count = VST_StringViewSplitByCount(source_view, end_of_line);
   for (usize i = 0; i < line_count; i++) {
     struct VST_StringView line =
         VST_StringViewShiftBy(&source_view, end_of_line);
-    
+
     switch (iVMESH_ParseInputType(line)) {
     case IVMESH_INPUT_TYPE_EOF:
       break;
@@ -165,101 +163,102 @@ void iVMESH_CountVNTF(struct VST_StringView source, uint32_t *vert_count,
 
 Index *iVMESH_ParseObjIndices(struct VST_StringView source, float **positions,
                               float **normals, float **uvs) {
-  
+
   Index *indices = NULL;
-  
+
   VLOG_Wait("Gettting vertices");
   fflush(stdout);
 
   *positions = NULL;
   *normals = NULL;
   *uvs = NULL;
-  
+
   struct VST_StringView end_of_line = VST_StringViewFromStr("\n");
   struct VST_StringView space = VST_StringViewFromStr(" ");
-  struct VST_StringView tab = VST_StringViewFromStr("\t");  
-  
+  struct VST_StringView tab = VST_StringViewFromStr("\t");
+  struct VST_StringView slash = VST_StringViewFromStr("/");
+
   struct VST_StringView *lines = VST_StringViewSplitByList(source, end_of_line);
 
-  for (usize i = 0; i < VST_ListLength(lines); i++) {
-    struct VST_StringView line = lines[i];
+  for (usize l = 0; l < VST_ListLength(lines) - 1; l++) {
+    struct VST_StringView line = lines[l];
     struct VST_StringView type_view = VST_StringViewShiftBy(&line, space);
-    
+
     enum iVMESH_InputType type = iVMESH_ParseInputType(type_view);
-    
     switch (type) {
     case IVMESH_INPUT_TYPE_COMMENT:
       break;
     case IVMESH_INPUT_TYPE_VERTEX: {
       struct VST_StringView *floats = VST_StringViewSplitByList(line, space);
+      if (VST_ListLength(floats) != 3) {
+        VLOG_Error("%zu: Too many position dimensions, %zu", l,
+                   VST_ListLength(floats));
+      }
 
-      for (usize i = 0; i < VST_ListLength(floats); i++) {
-	VST_ListPush(
-      }        
-      
+      for (usize i = 0; i < 3; i++) {
+        VST_ListPush(*positions, VST_StringViewParseFloat(floats[i], 0, NULL));
+      }
+
+      VST_ListFree(floats);
       break;
     }
     case IVMESH_INPUT_TYPE_NORMAL: {
-      for (size_t float_count = 0; float_count < 3; float_count++) {
-        iVMESH_ParseSpace(source, source_size, &char_index);
-        (*normals)[cur_normal * 3 + float_count] =
-            iVMESH_ParseFloat(source, source_size, &char_index);
+      struct VST_StringView *floats = VST_StringViewSplitByList(line, space);
+      if (VST_ListLength(floats) != 3) {
+        VLOG_Error("%zu: Too many normal dimensions, %zu", l,
+                   VST_ListLength(floats));
       }
-      cur_normal++;
-      iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
+
+      for (usize i = 0; i < 3; i++) {
+        VST_ListPush(*normals, VST_StringViewParseFloat(floats[i], 0, NULL));
+      }
+      VST_ListFree(floats);      
       break;
     }
     case IVMESH_INPUT_TYPE_TEXTURE: {
-      for (size_t float_count = 0; float_count < 2; float_count++) {
-        iVMESH_ParseSpace(source, source_size, &char_index);
-        (*uvs)[cur_uv * 2 + float_count] =
-            iVMESH_ParseFloat(source, source_size, &char_index);
+      struct VST_StringView *floats = VST_StringViewSplitByList(line, space);
+      if (VST_ListLength(floats) != 2) {
+        VLOG_Error("%zu: Too many uv dimensions, %zu", l, VST_ListLength(floats));
       }
-      cur_uv++;
-      iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
+
+      for (usize i = 0; i < 2; i++) {
+        VST_ListPush(*uvs, VST_StringViewParseFloat(floats[i], 0, NULL));
+      }
+      VST_ListFree(floats);      
       break;
     }
     case IVMESH_INPUT_TYPE_FACE: {
-      for (size_t index_count = 0; index_count < 3; index_count++) {
-        indices[cur_index].pos =
-            iVMESH_ParseInt(source, source_size, &char_index);
-
-        iVMESH_ParseSpace(source, source_size, &char_index);
-
-        if (source[char_index] == '/') {
-          if (source[char_index + 1] != '/') {
-            char_index++;
-            indices[cur_index].tex =
-                iVMESH_ParseInt(source, source_size, &char_index);
-          } else {
-            char_index++;
-          }
-
-          if (source[char_index] != '/') {
-            VLOG_Error("missing second '/' in f/f/f at %zu\n", char_index);
-            abort();
-          }
-
-          char_index++;
-          indices[cur_index].normal =
-              iVMESH_ParseInt(source, source_size, &char_index);
-        }
-
-        cur_index++;
-
-        if (source[char_index] == '\n') {
-          char_index++;
-          break;
-        }
+      struct VST_StringView *index_triplets =
+          VST_StringViewSplitByList(line, space);
+      if (VST_ListLength(index_triplets) != 3) {
+        VLOG_Error("%zu: Too many face vertices, %zu", l,
+                   VST_ListLength(index_triplets));
       }
 
-      iVMESH_ParseSpaceAndNewline(source, source_size, &char_index);
+
+      for (usize i = 0; i < 3; i++) {
+        Index index = {0};
+        struct VST_StringView vertex_index =
+            VST_StringViewShiftBy(&index_triplets[i], slash);
+        index.pos = VST_StringViewParseInt(vertex_index, 0, NULL);
+
+        struct VST_StringView uv_index =
+            VST_StringViewShiftBy(&index_triplets[i], slash);
+        index.tex = VST_StringViewParseInt(uv_index, 0, NULL);
+
+        struct VST_StringView normal_index = index_triplets[i];
+        index.normal = VST_StringViewParseInt(normal_index, 0, NULL);
+        
+        VST_ListPush(indices, index);
+      }
+      VST_ListFree(index_triplets);      
+    }
+    default:
       break;
     }
-    }
   }
+  VST_ListFree(lines);
 
-  free(lines);
   return indices;
 }
 
@@ -285,11 +284,11 @@ uint32_t iVMESH_TableFind(Index *table, Index *index, uint32_t face_count) {
   return 0;
 }
 
-
 struct VMESH_Mesh VMESH_MeshFromObjNode(VFS_Node node,
                                         VMEM_Allocator allocator) {
   VST_String source = VFS_NodeStringGet(node);
-  struct VMESH_Mesh mesh = VMESH_MeshFromObjSource(VST_StringViewFromString(source), allocator);
+  struct VMESH_Mesh mesh =
+      VMESH_MeshFromObjSource(VST_StringViewFromString(source), allocator);
   VST_StringsDestroy(source);
   return mesh;
 }
@@ -297,15 +296,18 @@ struct VMESH_Mesh VMESH_MeshFromObjNode(VFS_Node node,
 struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
                                           VMEM_Allocator allocator) {
   struct VMESH_Mesh mesh = {0};
-  uint32_t vert_count, face_count, uv_count, normal_count;
-  iVMESH_CountVNTF(source, &vert_count, &face_count, &uv_count,
-                   &normal_count);
+
 
   float *positions, *normals, *uvs;
 
-  Index *indices = iVMESH_ParseObjIndices(
-					  source, face_count, &positions, vert_count, &normals,
-      normal_count, &uvs, uv_count); // get indices
+  Index *indices = iVMESH_ParseObjIndices(source, &positions, &normals,
+                                          &uvs); // get indices
+
+  uint32_t vert_count = VST_ListCount(positions);
+  uint32_t face_count = VST_ListCount(indices) / 3;  
+  uint32_t uv_count = VST_ListCount(uvs);
+  uint32_t normal_count = VST_ListCount(normals);
+
   Index *lookup_table = malloc(face_count * 3 * sizeof(Index));
   memset(lookup_table, 0xFC, face_count * 3 * sizeof(Index));
   uint32_t *mapped_indices = malloc(face_count * 3 * sizeof(uint32_t));
@@ -339,7 +341,9 @@ struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
     uint32_t n = lookup_table[j].normal - 1;
     uint32_t t = lookup_table[j].tex - 1;
 
-    vertices[j].pos[0] = positions[3 * p + 0];
+    vertices[j]
+        .pos[0] =
+        positions[3 * p + 0];
     vertices[j].pos[1] = positions[3 * p + 1];
     vertices[j].pos[2] = positions[3 * p + 2];
 
@@ -353,24 +357,25 @@ struct VMESH_Mesh VMESH_MeshFromObjSource(struct VST_StringView source,
   }
   VLOG_Ok("Vertices recalculated");
 
-  mesh->vertices = vertices;
-  mesh->indices = mesh_indices;
-  mesh->vertex_count = out_vertex_count;
-  mesh->index_count = face_count * 3;
+  mesh.vertices = vertices;
+  mesh.indices = mesh_indices;
+  mesh.vertex_count = out_vertex_count;
+  mesh.index_count = face_count * 3;
 
   VLOG_Wait("Tidying up");
   fflush(stdout);
   free(mapped_indices);
   free(lookup_table);
-  free(indices);
-  free(positions);
+  VST_ListFree(indices);
+  VST_ListFree(positions);
   if (normal_count) {
-    free(normals);
+    VST_ListFree(normals);
   }
   if (uv_count) {
-    free(uvs);
+    VST_ListFree(uvs);
   }
   VLOG_Ok("Tidied up");
+  return mesh;
 }
 
 void iVMESH_CountVerticesAndFaces(char *path, uint32_t *vertices,
@@ -384,7 +389,7 @@ void iVMESH_CountVerticesAndFaces(char *path, uint32_t *vertices,
   while ((c = fgetc(file)) != EOF) {
     if (c == '#') {
     }
-    if (c == 'f')      
+    if (c == 'f')
       *faces += 1;
     if (c == 'v') {
       c = fgetc(file);
@@ -402,9 +407,9 @@ void iVMESH_CountVerticesAndFaces(char *path, uint32_t *vertices,
   fclose(file);
 }
 
-void VMESH_MeshDefaultDestroy(struct VMESH_Mesh *mesh) {
-  free(mesh->indices);
-  free(mesh->vertices);
+void VMESH_MeshDefaultDestroy(struct VMESH_Mesh mesh) {
+  free(mesh.indices);
+  free(mesh.vertices);
 }
 
 #endif

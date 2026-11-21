@@ -1,3 +1,5 @@
+#ifndef VSHAPE_H
+#define VSHAPE_H
 #include "vmath.h"
 #include <stdbool.h>
 
@@ -39,7 +41,7 @@ bool VSHAPE_CollisionGet(VShape a, VShape b, float to_separate[3]);
 bool VSHAPE_Collide(VShape a, VShape b);
 
 
-#ifdef VSHAPE_IMPLEMENTATION
+#ifdef VLIB_IMPLEMENTATION
 
 #include <assert.h>
 #include <float.h>
@@ -651,4 +653,5 @@ bool iVSHAPE_GJK(u32 vcount1, f32 verts1[vcount1][3], u32 vcount2,  f32 verts2[v
 }
 
 
+#endif
 #endif
