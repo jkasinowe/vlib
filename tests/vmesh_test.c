@@ -1,7 +1,5 @@
 //#define VLOG_LOG
-#define VMEM_IMPLEMENTATION
-#define VMESH_IMPLEMENTATION
-#define VMATH_IMPLEMENTATION
+#define VLIB_IMPLEMENTATION
 #include <stdio.h>
 #include "../include/vmesh.h"
 #include <assert.h>

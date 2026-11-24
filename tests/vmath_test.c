@@ -1,6 +1,6 @@
+#define VLIB_IMPLEMENTATION
 #include <assert.h>
 #include <stdio.h>
-#define VMATH_IMPLEMENTATION
 #include "../include/vmath.h"
 
 void test_vectors() {

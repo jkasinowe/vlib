@@ -1,4 +1,4 @@
-#define VMEM_IMPLEMENTATION
+#define VLIB_IMPLEMENTATION
 #include "../include/vmem.h"
 
 int main() {

@@ -86,6 +86,19 @@ bool VST_StringStartsWithStr(VST_String string, char *start);
 void VST_StringAppendFmt(VST_String string, char *fmt, ...);
 void VST_StringAppendStr(VST_String string, char *str);
 void VST_StringAppendStringView(VST_String string, struct VST_StringView view);
+void VST_StringAppendStringViewList(VST_String string,
+                                    struct VST_StringView *views);
+void VST_StringAppendStringViewList(VST_String to,
+                                    struct VST_StringView *views);
+void VST_StringAppendEnsureBetweenStringViewList(VST_String to,
+                                                 struct VST_StringView *views,
+                                                 struct VST_StringView what);
+void VST_StringJoinStringViewList(VST_String to, struct VST_StringView *views,
+                                  struct VST_StringView with);
+
+VST_String VST_StringConcatStringViewList(struct VST_StringView *views);
+
+VST_String VST_StringReplace(VST_String string, struct VST_StringView from, struct VST_StringView to);
 
 void VST_StringTrimLeft(VST_String string, size_t amount);
 void VST_StringTrimRight(VST_String string, size_t amount);
@@ -232,9 +245,12 @@ void *iVST_ListGrow_func(void *list, size_t element_size, size_t add_cap,
   (iVST_ListMaybeGrow(array, 1), (array)[VST_ListLength(array)] = (element),   \
    (array)[iVST_ListHeaderGet(array)->count++])
 
+#define VST_ListPop(array)                                                     \
+  (VST_ListLength(array) > 0 ? iVST_ListHeaderGet(array)->count--, array[VST_ListLength(array)] : 0)
+
+
 #define VST_ListFree(array) (free(iVST_ListHeaderGet(array)))
 
-#define VLIB_IMPLEMENTATION
 #ifdef VLIB_IMPLEMENTATION
 #include "vlog.h"
 #include "vmath.h"
@@ -342,6 +358,7 @@ usize iVST_StrLengthGet(char *str) {
 }
 
 void VST_StringAppendStringView(VST_String string, struct VST_StringView view) {
+  if (view.size == 0) return;
   usize str_size = view.size;
   usize needed_size = string->start;
   needed_size += string->size;
@@ -387,9 +404,9 @@ VST_String VST_StringFromStr(char *str) {
 }
 
 enum iVST_StringsAppendMode { // {"first", "second/", "third"} separator = '/'
-  IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, // output: first/second/third
-  IVST_STRINGS_APPEND_MODE_JOIN_WITH,      // output: first/second//third
-  IVST_STRINGS_APPEND_MODE_JOIN,           // output: firstsecond/third
+  IVST_APPEND_MODE_ENSURE_BETWEEN, // output: first/second/third
+  IVST_APPEND_MODE_JOIN_WITH,      // output: first/second//third
+  IVST_APPEND_MODE_JOIN,           // output: firstsecond/third
 };
 
 void iVST_StringsAppendVaList(VST_String to, va_list strings,
@@ -400,10 +417,10 @@ void iVST_StringsAppendVaList(VST_String to, va_list strings,
   VST_String dummy = (VST_String)-1;
 
   while (current != dummy) {
-    if (mode == IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN) {
+    if (mode == IVST_APPEND_MODE_ENSURE_BETWEEN) {
       VST_StringEnsureEndsIn(to, with);
     }
-    if (mode == IVST_STRINGS_APPEND_MODE_JOIN_WITH) {
+    if (mode == IVST_APPEND_MODE_JOIN_WITH) {
       VST_StringAppendStringView(to, with);
     }
     VST_StringAppendStr(to, VST_StringPtrGet(current));
@@ -416,7 +433,7 @@ void iVST_StringsAppendVaList(VST_String to, va_list strings,
 void iVST_StringsAppend(VST_String to, ...) {
   va_list strings;
   va_start(strings, to);
-  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_JOIN,
+  iVST_StringsAppendVaList(to, strings, IVST_APPEND_MODE_JOIN,
                            (struct VST_StringView){0});
 }
 
@@ -425,7 +442,7 @@ VST_String iVST_StringsConcat(VST_String first, ...) {
   va_start(strings, first);
 
   VST_String result = VST_StringDuplicate(first);
-  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN,
+  iVST_StringsAppendVaList(result, strings, IVST_APPEND_MODE_JOIN,
                            (struct VST_StringView){0});
 
   return result;
@@ -435,7 +452,7 @@ VST_String iVST_StringsConcatJoin(struct VST_StringView with, ...) {
   va_list strings;
   va_start(strings, with);
   VST_String result = VST_StringDuplicate(va_arg(strings, VST_String));
-  iVST_StringsAppendVaList(result, strings, IVST_STRINGS_APPEND_MODE_JOIN_WITH,
+  iVST_StringsAppendVaList(result, strings, IVST_APPEND_MODE_JOIN_WITH,
                            with);
   return result;
 }
@@ -445,7 +462,7 @@ VST_String iVST_StringsConcatEnsureBetween(struct VST_StringView between, ...) {
   va_start(strings, between);
   VST_String result = VST_StringDuplicate(va_arg(strings, VST_String));
   iVST_StringsAppendVaList(result, strings,
-                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, between);
+                           IVST_APPEND_MODE_ENSURE_BETWEEN, between);
   return result;
 }
 
@@ -457,7 +474,7 @@ VST_String iVST_StringsConcatPath(VST_String first, ...) {
   struct VST_StringView delimiter = VST_StringViewFromStr("/");
 
   iVST_StringsAppendVaList(result, strings,
-                           IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN, delimiter);
+                           IVST_APPEND_MODE_ENSURE_BETWEEN, delimiter);
 
   return result;
 }
@@ -569,7 +586,7 @@ void iVST_StringsAppendPath(VST_String to, ...) {
   va_start(strings, to);
 
   struct VST_StringView delimiter = VST_StringViewFromStr("/");
-  iVST_StringsAppendVaList(to, strings, IVST_STRINGS_APPEND_MODE_ENSURE_BETWEEN,
+  iVST_StringsAppendVaList(to, strings, IVST_APPEND_MODE_ENSURE_BETWEEN,
                            delimiter);
 }
 
@@ -1024,6 +1041,55 @@ int64_t VST_StringViewParseInt(struct VST_StringView view,
 
   return value;
 }
+
+void iVST_StringAppendStringViewList(VST_String to,
+                                     struct VST_StringView *views,
+                                     enum iVST_StringsAppendMode mode,
+                                     struct VST_StringView with) {
+  if (VST_ListLength(views) < 1) return;
+  VST_StringAppendStringView(to, views[0]);
+  
+  for (usize i = 1; i < VST_ListLength(views); i++) {
+    if (mode == IVST_APPEND_MODE_ENSURE_BETWEEN) {
+      VST_StringEnsureEndsIn(to, with);
+    }
+    if (mode == IVST_APPEND_MODE_JOIN_WITH) {
+      VST_StringAppendStringView(to, with);
+    }
+    VST_StringAppendStringView(to, views[i]);
+  }    
+}
+
+void VST_StringAppendStringViewList(VST_String to,
+                                    struct VST_StringView *views) {
+  iVST_StringAppendStringViewList(to, views, IVST_APPEND_MODE_JOIN, (struct VST_StringView){0});
+}
+
+void VST_StringAppendEnsureBetweenStringViewList(VST_String to,
+                                                 struct VST_StringView *views,
+                                                 struct VST_StringView with) {
+  iVST_StringAppendStringViewList(to, views, IVST_APPEND_MODE_ENSURE_BETWEEN, with);
+}
+
+void VST_StringJoinStringViewList(VST_String to, struct VST_StringView *views,
+                                  struct VST_StringView with) {
+  iVST_StringAppendStringViewList(to, views, IVST_APPEND_MODE_JOIN_WITH, with);
+}  
+
+VST_String VST_StringConcatStringViewList(struct VST_StringView *views) {
+  VST_String string = VST_StringCreate();
+  VST_StringAppendStringViewList(string, views);
+  return string;
+}
+
+VST_String VST_StringReplace(VST_String string, struct VST_StringView from,
+                       struct VST_StringView to) {
+  VST_String new = VST_StringCreate();
+  struct VST_StringView *parts = VST_StringSplitByList(string, from);
+  VST_StringJoinStringViewList(new, parts, to);
+  VST_ListFree(parts);
+  return new;
+}  
 
 #endif
 

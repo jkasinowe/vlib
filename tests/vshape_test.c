@@ -1,5 +1,4 @@
-#define VSHAPE_IMPLEMENTATION
-#define VMATH_IMPLEMENTATION
+#define VLIB_IMPLEMENTATION
 #include "../include/vshape.h"
 #include "assert.h"
 

@@ -1,7 +1,4 @@
-#define VMEM_IMPLEMENTATION
-#define VVOX_IMPLEMENTATION
-#define VMATH_IMPLEMENTATION
-#define VSHAPE_IMPLEMENTATION
+#define VLIB_IMPLEMENTATION
 #include <stdio.h>
 #include <stddef.h>
 #include "../include/vmesh.h"

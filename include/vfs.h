@@ -11,6 +11,7 @@ void iVFS_NodesDestroy(VFS_Node first, ...);
   iVFS_NodesDestroy(first, ##__VA_ARGS__, (VFS_Node)(-1));
 
 VFS_Node VFS_NodeFromPath(struct VST_StringView path);
+VST_String VFS_NodeStringGet(VFS_Node file);
 
 #endif
 

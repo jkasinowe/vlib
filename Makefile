@@ -1,4 +1,4 @@
-DEBUG = -O0 -g -gdwarf-4 -fsanitize=address -fno-omit-frame-pointer
+DEBUG = -O0 -g -gdwarf-4 -fsanitize=address -fno-omit-frame-pointer -std=c99
 RELEASE = -O3
 
 EFLAGS = -Wall -Wextra -Werror -Wno-unused-parameter -Wno-unused-variable

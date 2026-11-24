@@ -1,7 +1,5 @@
 #define VLOG_LOG
-#define VSTRUCT_IMPLEMENTATION
-#define VMEM_IMPLEMENTATION
-#define VMATH_IMPLEMENTATION
+#define VLIB_IMPLEMENTATION
 #include "../include/vmath.h"
 #include "../include/vstruct.h"
 
@@ -15,12 +13,15 @@ int main() {
     assert(ints[i] == i);
   }
 
+  assert(VST_ListPop(ints) == 9);
+  assert(VST_ListLength(ints) == 9);
+
   VST_ListFree(ints);
   printf("\tOK\n");
 
   printf("Testing string concatenation: ");
 
-  VST_String name, path1, path2, path3, full, expected, left;
+  VST_String name, path1, path2, path3, full, expected, left, reappended;
   struct VST_StringView empty = VST_StringViewFromStr("");
   expected = VST_StringFromStr("home/user/models/model.obj/");
   name = VST_StringFromStr("   model.obj/    ");
@@ -33,6 +34,13 @@ int main() {
   assert(VST_StringEqual(full, expected));
   assert(!VST_StringViewContainsStr(empty, "models"));
   assert(VST_StringContainsStr(full, "models"));
+  
+  struct VST_StringView *parts = 0;
+  parts = VST_StringSplitByList(full, VST_StringViewFromStr("/"));
+  reappended = VST_StringCreate();
+  VST_StringJoinStringViewList(reappended, parts, VST_StringViewFromStr("/"));
+  VST_ListFree(parts);
+  assert(VST_StringEqual(reappended, full));
 
   printf("\tOK\n");
 
@@ -76,7 +84,7 @@ int main() {
   assert(VST_StringStartsWith(full, expected_parts[0]));
   assert(!VST_StringStartsWith(full, expected_parts[1]));
 
-  VST_StringsDestroy(name, path1, path2, path3, full, expected);
+  VST_StringsDestroy(name, path1, path2, path3, full, expected, reappended);
   printf("\tOK\n");
 
 
@@ -113,6 +121,5 @@ int main() {
 
   printf("\tOK\n");
 
-  
   return 0;
 }
