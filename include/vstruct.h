@@ -213,6 +213,12 @@ int64_t VST_StringViewParseInt(struct VST_StringView view,
                                int64_t default_value,
                                struct VST_StringView *leftover);
 
+#define VST_STRING_VIEW_NEWLINE VST_StringViewFromStr("\n")
+#define VST_STRING_VIEW_TAB VST_StringViewFromStr("\t")
+#define VST_STRING_VIEW_SPACE VST_StringViewFromStr(" ")
+#define VST_STRING_VIEW_COMMA VST_StringViewFromStr(",")
+#define VST_STRING_VIEW_DOT VST_StringViewFromStr(".")
+
 /* This dynamic array thingy is taken and repurposed from Sean Barrett's
  * Nothings https://github.com/nothings/stb/blob/master/stb_ds.h */
 struct iVST_ListHeader {
